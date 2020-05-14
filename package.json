@@ -11,5 +11,8 @@
   },
   "devDependencies": {
     "socket.io": "^1.7.3"
+  },
+  "scripts": {
+	"start": "node index.js"
   }
 }
