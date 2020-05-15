@@ -1,3 +1,5 @@
+const server = require('http').createServer();
+const io = require('socket.io')(server, {origins:'*:*'});
 const signalServer = require('simple-signal-server')(io);
 const allIDs = new Set();
 
