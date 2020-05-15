@@ -7,7 +7,8 @@
   "license": "MIT",
   "dependencies": {
     "inherits": "^2.0.3",
-    "nanobus": "^4.3.3"
+    "nanobus": "^4.3.3",
+	"socket.io": "^2.1.0"
   },
   "devDependencies": {
     "socket.io": "^1.7.3"
