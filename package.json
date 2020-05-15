@@ -1,17 +1,15 @@
 {
-  "name": "simple-signal-server",
-  "version": "2.1.1",
-  "description": "socket.io signalling solution for simple-peer",
+  "name": "woahzone-server",
+  "version": "0.0.1",
+  "description": "Server for cool fun stuff based on simple-signal-server using socket.io",
   "main": "src/index.js",
-  "author": "Thomas Mullen",
+  "author": "Riley Taylor",
   "license": "MIT",
   "dependencies": {
     "inherits": "^2.0.3",
     "nanobus": "^4.3.3",
-	"socket.io": "^2.1.0"
-  },
-  "devDependencies": {
-    "socket.io": "^1.7.3"
+	"socket.io": "2.3.0",
+	"simple-signal-server": "2.1.1"
   },
   "scripts": {
 	"start": "node index.js"
