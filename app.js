@@ -13,18 +13,20 @@ app.use((req, res, next) => {
 });
 
 // Listen for incoming connections from clients
-io.on('connection', function (socket) {
+io.on('connection', (client) => {
+	console.log("Client connected: ", client.id);
 
-	console.log(socket);
-	socket.broadcast.emit('this', 'test')
+	client.on('join', function(data) {
+		console.log(data);
+	});
 
 	// Start listening for mouse move events
-	socket.on('mousemove', function (data) {
+	client.on('mousemove', function (data) {
 		
 		// This line sends the event (broadcasts it)
 		// to everyone except the originating client.
-		socket.broadcast.emit('moving', data);
+		client.broadcast.emit('moving', data);
 	});
 });
 
-server.listen(3000);
+server.listen(443);
