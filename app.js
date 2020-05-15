@@ -1,10 +1,12 @@
 // Including libraries
-
+const express = require('express');
 const cors = require('cors');
-const app = require('http').createServer(handler);
+const app = express();
+const server = require('http').createServer(app);
 const io = require('socket.io').listen(app);
 
-app.options('*', cors())
+app.use(cors());
+app.options('*', cors());
 
 // Listen for incoming connections from clients
 io.on('connection', function (socket) {
