@@ -1,7 +1,4 @@
-import express from 'express';
-import cors from 'cors';
-
-const app = express();
+const app = require('express')();
 const io = require('socket.io')(app, {
 	"log level": 1,
 	"transports": [
@@ -19,7 +16,7 @@ const io = require('socket.io')(app, {
 });
 const signalServer = require('simple-signal-server')(io);
 const allIDs = new Set();
-app.use(cors());
+app.use(require('cors')());
 
 
 // Handle server behaviour
