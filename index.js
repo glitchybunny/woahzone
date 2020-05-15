@@ -1,4 +1,8 @@
-const io = require('socket.io')({
+import express from 'express';
+import cors from 'cors';
+
+const app = express();
+const io = require('socket.io')(app, {
 	"log level": 1,
 	"transports": [
 		'websocket',
@@ -7,10 +11,15 @@ const io = require('socket.io')({
 		'xhr-polling',
 		'jsonp-polling'
 	],
-	"origins": "http://localhost:* http://127.0.0.1:* https://rtay.io:*"
+	"origins": [
+		"http://localhost:*", 
+		"http://127.0.0.1:*", 
+		"https://rtay.io:*"
+	]
 });
 const signalServer = require('simple-signal-server')(io);
 const allIDs = new Set();
+app.use(cors());
 
 
 // Handle server behaviour
