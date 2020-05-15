@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../darkrilin.github.io/.idea/darkrilin.github.io.iml" filepath="$PROJECT_DIR$/../darkrilin.github.io/.idea/darkrilin.github.io.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/woahzone-server.iml" filepath="$PROJECT_DIR$/.idea/woahzone-server.iml" />
     </modules>
   </component>
