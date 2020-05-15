@@ -1,12 +1,12 @@
 // Including libraries
 const express = require('express');
-const cors = require('cors');
 const app = express();
 const server = require('http').createServer(app);
-const io = require('socket.io').listen(server);
+const io = require('socket.io')(server);
 
-server.use(cors());
-server.use((req, res, next) => {
+const cors = require('cors');
+app.use(cors());
+app.use((req, res, next) => {
 	res.header("Access-Control-Allow-Origin", "*");
 	res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
 	next();
@@ -23,3 +23,5 @@ io.on('connection', function (socket) {
 		socket.broadcast.emit('moving', data);
 	});
 });
+
+server.listen(3000);
