@@ -6,7 +6,11 @@ const server = require('http').createServer(app);
 const io = require('socket.io').listen(server);
 
 app.use(cors());
-app.options('*', cors());
+app.use((req, res, next) => {
+	res.header("Access-Control-Allow-Origin", "*");
+	res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+	next();
+})
 
 // Listen for incoming connections from clients
 io.on('connection', function (socket) {
