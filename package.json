@@ -1,18 +1,14 @@
 {
-  "name": "woahzone-server",
-  "version": "0.0.1",
-  "description": "Server for cool fun stuff based on simple-signal-server using socket.io",
-  "main": "src/index.js",
-  "author": "Riley Taylor",
-  "license": "MIT",
-  "dependencies": {
-    "inherits": "^2.0.3",
-    "nanobus": "^4.3.3",
-	"socket.io": "2.3.0",
-	"simple-signal-server": "2.1.1",
-	"express": "*"
-  },
-  "scripts": {
-	"start": "node index.js"
-  }
+    "name": "woahzone-server",
+    "version": "0.0.1",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js"
+    },
+    "dependencies": {
+        "socket.io": "^2.3.0"
+    },
+    "license": "MIT",
+    "keywords": []
 }
