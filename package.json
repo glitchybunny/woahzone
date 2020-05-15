@@ -7,6 +7,7 @@
         "start": "node app.js"
     },
     "dependencies": {
+        "node-static": "^0.7.11",
         "socket.io": "^2.3.0"
     },
     "license": "MIT",
