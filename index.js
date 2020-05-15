@@ -1,21 +1,17 @@
-const io = require('socket.io')();
+const io = require('socket.io')({
+	"log level": 1,
+	"transports": [
+		'websocket',
+		'flashsocket',
+		'htmlfile',
+		'xhr-polling',
+		'jsonp-polling'
+	],
+	"origins": "http://localhost:* http://127.0.0.1:* https://rtay.io:*"
+});
 const signalServer = require('simple-signal-server')(io);
 const allIDs = new Set();
 
-// Configure socket.io to work with CORS
-console.log("Server in production mode");
-io.enable('browser client minification');  // send minified client
-io.enable('browser client etag'); // apply etag caching logic based on version number
-io.enable('browser client gzip'); // the file
-io.set('log level', 1);           // logging
-io.set('transports', [            // all transports (optional if you want flashsocket)
-	'websocket',
-	'flashsocket',
-	'htmlfile',
-	'xhr-polling',
-	'jsonp-polling'
-]);
-io.set('origins', "http://localhost:* http://127.0.0.1:* https://rtay.io:*");
 
 // Handle server behaviour
 signalServer.on('discover', (request) => {
