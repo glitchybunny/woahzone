@@ -15,6 +15,9 @@ app.use((req, res, next) => {
 // Listen for incoming connections from clients
 io.on('connection', function (socket) {
 
+	console.log(socket);
+	socket.broadcast.emit('this', 'test')
+
 	// Start listening for mouse move events
 	socket.on('mousemove', function (data) {
 		
