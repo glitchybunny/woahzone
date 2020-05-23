@@ -3,6 +3,8 @@ const express = require('express');
 const app = express();
 const server = require('http').createServer(app);
 const io = require('socket.io')(server);
+const http = require('http');
+var path = require('path');
 
 const cors = require('cors');
 var allowCrossDomain = function(req, res, next) {
@@ -36,6 +38,14 @@ io.on('connection', (client) => {
 		// to everyone except the originating client.
 		client.broadcast.emit('moving', data);
 	});
+});
+
+// Http server
+app.get('/', function(req, res) {
+    res.sendFile(path.join(__dirname + '/index.html'));
+});
+app.get('/socket.io.js', function(req, res) {
+    res.sendFile(path.join(__dirname + '/socket.io.js'));
 });
 
 server.listen(process.env.PORT || 3000);
