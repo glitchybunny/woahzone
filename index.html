@@ -3,6 +3,12 @@
 <html lang="en">
 	<head>
 		<style>
+			@font-face {
+				font-family: 'OpenSans';
+				src: url("https://rtay.io/resources/fonts/OpenSans-Regular.ttf") format("truetype");
+				font-display: swap;
+			}
+
 			html, body {
 				width:  100%;
 				height: 100%;
@@ -10,24 +16,51 @@
 				padding: 0;
 				overflow: hidden;
 			}
+
+			.center-screen {
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+				text-align: center;
+				min-height: 100vh;
+			}
+
+			#name-div {
+				width:auto; height:auto; padding:20px;
+				background-color:#6BBA9F;
+				font-family:'OpenSans', sans-serif; font-size:18px;
+			}
+			#name-div p {
+				margin:4px;
+			}
+			#name-div input {
+				margin:4px;
+				font-family:'OpenSans', sans-serif; font-size:20px; text-align:center;
+				background-color:rgba(0,0,0,0);
+				outline:1px solid rgba(0,0,0,0.3); border:0;
+			}
+			#name-div input:hover {
+				outline:1px solid rgba(0,0,0,1);
+			}
 		</style>
 	</head>
 	<body>
 		<!-- The page -->
-		<h1>
-			This page is blank right now.
-		</h1>
-		<!-- 
-		Why are you reading the html? Why are you reading this comment in particular? 
-		This page has nothing on it right now 
-		-->
-		
+		<div id='canvas-holder'></div>
+		<div class="center-screen">
+			<div id="name-div">
+				<p style="margin-bottom:8px;">who are you?</p>
+				<input id="name-input" type="text" size="20" maxlength="20">
+				<br/>
+				<input type="button" value="ok" style="cursor:pointer; margin-top:12px; font-size:18px">
+			</div>
+		</div>
+
 		<!-- JavaScript -->
-		<!--
 		<script src="/js/socket.io.js"></script>
 		<script src="/js/WebGL.min.js"></script>
 		<script src="/js/woahzone.js"></script>
-		-->
 	</body>
 </html>
 

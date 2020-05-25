@@ -3,12 +3,22 @@ if(!('getContext' in document.createElement('canvas'))){
     alert('Sorry, it looks like your browser does not support canvas!');
 }
 
+// Make sure webgl is enabled on the current machine for performance
+if (WEBGL.isWebGLAvailable()) {
+    // If everything is possible, automatically select the input element
+    let input = document.getElementById('name-input');
+    input.focus();
+    input.select();
+} else {
+    let warning = WEBGL.getWebGLErrorMessage();
+    document.body.appendChild(warning);
+}
+
+/*
 // The URL of your web server (the port is set in app.js)
 const url = document.documentURI;
 const canvas = document.getElementById('paper');
 const ctx = canvas.getContext('2d');
-
-// Generate an unique ID
 var id = Math.round(Date.now()*Math.random());
 
 // A flag for drawing activity
@@ -23,17 +33,6 @@ socket.on('connect', (data) => {
 });
 
 socket.on('moving', (data) => {
-    console.log('moving');
-    if (!(data.id in clients)) {
-        // a new user has connected, so create their cursor
-        let cursor = document.createElement('div');
-        cursor.className = 'cursor';
-        document.getElementById('cursors').appendChild(cursor);
-
-        // also add their cursor to the user cursor thing
-        cursors[data.id] = cursor;
-    }
-
     // Move the mouse pointer
     cursors[data.id].style.left = data.x;
     cursors[data.id].style.top = data.y;
@@ -117,3 +116,4 @@ function drawLine(fromx, fromy, tox, toy){
 window.addEventListener( 'resize', () => {
     document.getElementById('paper').setSize(window.innerWidth, window.innerHeight);
 }, false );
+ */
