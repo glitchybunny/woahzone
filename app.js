@@ -15,8 +15,7 @@ var allowCrossDomain = function(req, res, next) {
 	// intercept OPTIONS method
 	if ('OPTIONS' == req.method) {
 		res.send(200);
-	}
-	else {
+	} else {
 		next();
 	}
 };
@@ -42,10 +41,11 @@ io.on('connection', (client) => {
 
 // Http server
 app.get('/', function(req, res) {
-    res.sendFile(path.join(__dirname + '/index.html'));
+	res.sendFile(path.join(__dirname + '/index.html'));
 });
-app.get('/socket.io.js', function(req, res) {
-    res.sendFile(path.join(__dirname + '/socket.io.js'));
-});
+const files = ['/js/socket.io.js', '/js/woahzone.js', '/js/WebGL.min.js'];
+for (let i in files) {
+	app.get(files[i], function(req, res) {res.sendFile(path.join(__dirname + files[i]));});
+}
 
-server.listen(process.env.PORT || 3000);
+server.listen(process.env.PORT || 80);
