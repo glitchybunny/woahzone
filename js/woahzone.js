@@ -146,7 +146,7 @@ socket.on('leave', (id) => {
 function init() {
     // Load the scene
     scene = new THREE.Scene();
-    loadScene("test1.glb");
+    loadScene("weddingquake.glb");
     scene.background = new THREE.Color(0x000000);
 
     // Add lighting
