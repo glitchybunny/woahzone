@@ -105,7 +105,7 @@ app.get('/', function(req, res) {
 	res.sendFile(path.join(__dirname + '/index.html'));
 });
 const files = ['/js/socket.io.js', '/js/woahzone.js', '/js/WebGL.min.js', '/js/three.module.js', '/js/controls/PointerLockControls.js',
-	'/js/loaders/GLTFLoader.js', '/meshes/test1.glb', '/img/skybox/cloudtop_ft.jpg', '/img/skybox/cloudtop_bk.jpg', '/img/skybox/cloudtop_up.jpg',
+	'/js/loaders/GLTFLoader.js', '/meshes/weddingquake.glb', '/img/skybox/cloudtop_ft.jpg', '/img/skybox/cloudtop_bk.jpg', '/img/skybox/cloudtop_up.jpg',
 	'/img/skybox/cloudtop_dn.jpg', '/img/skybox/cloudtop_lf.jpg', '/img/skybox/cloudtop_rt.jpg', '/meshes/player.glb',];
 for (let i in files) {
 	app.get(files[i], function(req, res) {res.sendFile(path.join(__dirname + files[i]));});
