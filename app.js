@@ -95,7 +95,6 @@ io.on('connection', (socket) => {
 
 	// Listen for movement events
 	socket.on('move', (data) => {
-		console.log(data);
 		socket.broadcast.emit('move', data);
 	});
 });
