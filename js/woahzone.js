@@ -37,7 +37,7 @@ var onKeyDown, onKeyUp;
 var cameraDir = new THREE.Vector3();
 var cameraMove, cameraStrafe, cameraHeave;
 var moveSpdNormal = 8;
-var moveSpdSprint = 24;
+var moveSpdSprint = 16;
 var moveSpd = moveSpdNormal;
 
 var time, delta;
@@ -274,7 +274,7 @@ function playerInit() {
     controls = new PointerLockControls(camera, document.body);
     player = controls.getObject();
     player.position.fromArray([0, 0, 0]);
-    player.speedMultiplier = 0.6;
+    player.speedMultiplier = 1;
     scene.add(player);
 
     canvasHolder.addEventListener('click', function () {
