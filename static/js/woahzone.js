@@ -6,6 +6,7 @@
 // Imports
 import * as THREE from './three.module.js';
 import {GLTFLoader} from './loaders/GLTFLoader.js';
+import {DRACOLoader} from './loaders/DRACOLoader.js';
 import {PointerLockControls} from './controls/PointerLockControls.js';
 
 // Socket vars
@@ -54,9 +55,6 @@ if (!('getContext' in document.createElement('canvas'))) {
 // Make sure webgl is enabled on the current machine for performance
 if (WEBGL.isWebGLAvailable()) {
     // If everything is possible, automatically select the input element
-    let input = document.getElementById('name-input');
-    input.focus();
-    input.select();
     init();
     gameLoop();
 } else {
@@ -146,7 +144,7 @@ socket.on('leave', (id) => {
 function init() {
     // Load the scene
     scene = new THREE.Scene();
-    loadScene("weddingquake.glb");
+    loadScene("./mesh/weddingquake.glb");
     scene.background = new THREE.Color(0x000000);
 
     // Add lighting
@@ -159,7 +157,7 @@ function init() {
     player = playerInit();
 
     // Setup the renderer and composer
-    renderer = new THREE.WebGLRenderer({antialias: true, powerPreference: "low-power", stencil: false, alpha: true});
+    renderer = new THREE.WebGLRenderer({antialias: true, powerPreference: "high-performance", stencil: false, alpha: true});
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.outputEncoding = THREE.GammaEncoding;
@@ -186,9 +184,17 @@ function loadScene(sceneFile) {
         progress.hidden = true;
     };
 
-    // Load geometry
+    // DRACO Loader for decompression
+    const dracoLoadr = new DRACOLoader();
+    dracoLoadr.setDecoderPath('./js/loaders/draco/');
+    dracoLoadr.setDecoderConfig({ type: 'js' });
+    //draco.getDecoderModule();
+
+    // Instantiate loader
     loader = new GLTFLoader(manager);
-    loader.setPath('/meshes/');
+    loader.setDRACOLoader(dracoLoadr);
+
+    // Load geometry
     loader.load(
         sceneFile,
 
@@ -213,6 +219,13 @@ function loadScene(sceneFile) {
 
             // Tell the game to update the renderer
             updateScene = true;
+
+            // Now make name input visible and automatically select it
+            let centerScreen = document.getElementById('name-div-center');
+            centerScreen.style.display = "flex";
+            let input = document.getElementById('name-input');
+            input.focus();
+            input.select();
         },
 
         (xhr) => {
@@ -227,18 +240,13 @@ function loadScene(sceneFile) {
 
     // Load player models
     let playerLoader = new GLTFLoader(manager);
-    loader.setPath('/meshes/');
     loader.load(
-        'player.glb',
+        './mesh/player.glb',
 
         (gltf) => {
             // initialise player object
             playerModel = gltf.scene;
             processMaterials(playerModel);
-
-            // add player model to any other players in the scene
-            console.log(users);
-            //scene.add(playerModel);
 
             // Tell the game to update the renderer
             updateScene = true;
@@ -255,13 +263,12 @@ function loadScene(sceneFile) {
     );
 
     // Load skybox
-    let skyboxPath = ["cloudtop", "jpg"];
+    let skyboxPath = ["./img/skybox/cloudtop", "jpg"];
     let skyboxArray = ["_ft.", "_bk.", "_up.", "_dn.", "_rt.", "_lf."];
     for (let i in skyboxArray) {
         skyboxArray[i] = skyboxPath[0] + skyboxArray[i] + skyboxPath[1];
     }
     let skybox = new THREE.CubeTextureLoader()
-        .setPath("/img/skybox/")
         .load(skyboxArray,
             (texture) => {
                 // Set background to skybox texture
@@ -369,7 +376,7 @@ function playerInit() {
 function gameLoop() {
     setTimeout(function () {
         requestAnimationFrame(gameLoop);
-    }, 14.28571);
+    }, 1000/60);
 
     time = performance.now();
     if (useDeltaTiming) {
@@ -383,7 +390,7 @@ function gameLoop() {
             }
         }
     } else {
-        delta = 0.0167;
+        delta = 0.018;
     }
 
     if (controls.isLocked || updateScene) {
