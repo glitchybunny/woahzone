@@ -1,0 +1,1 @@
+gltf-pipeline -i model.glb -o model-compressed.glb -d
