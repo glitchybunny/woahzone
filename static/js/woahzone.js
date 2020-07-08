@@ -141,7 +141,7 @@ socket.on('leave', (id) => {
 function init() {
     // Load the scene
     scene = new THREE.Scene();
-    loadScene("./mesh/weddingquake.glb");
+    loadScene("./mesh/weddingquake_compressed.glb");
     scene.background = new THREE.Color(0x000000);
 
     // Add lighting
@@ -152,6 +152,9 @@ function init() {
     // Create and configure player
     camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.02, 500);
     player = playerInit();
+
+    // Generate fonts
+    createText("fuck-------------------------------------------fuck");
 
     // Setup the renderer and composer
     renderer = new THREE.WebGLRenderer({antialias: true, powerPreference: "high-performance", stencil: false, alpha: true});
@@ -361,6 +364,13 @@ function playerInit() {
     document.addEventListener('keyup', onKeyUp, false);
 
     return player;
+}
+
+function createText() {
+    var textLoader = new THREE.FontLoader();
+    textLoader.load('font/OpenSans_Regular.json', (font) => {
+        console.log("yes");
+    });
 }
 
 function gameLoop() {
