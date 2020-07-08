@@ -24,6 +24,15 @@ var allowCrossDomain = function(req, res, next) {
 app.use(cors());
 app.use(allowCrossDomain);
 
+// Usernames
+const nameList = ["Alfa", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett", "Kilo",
+	"Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey",
+	"X-ray", "Yankee", "Zulu"];
+
+function randomName() {
+	return nameList[nameList.length * Math.random() | 0];
+}
+
 // Basic client list (to keep track of currently connected client IDs and names only, nothing more)
 const clients = [];
 const sockets = [];
@@ -43,12 +52,11 @@ io.on('connection', (socket) => {
 		delete clients[socket.id];
 	});
 
-	// Listen for client joining and let other clients know to broadcast their names
+	// Listen for client joining and assign a name
 	socket.on('join', (data) => {
 		// Make sure name is XSS safe
 		let _id = data.id || 0;
-		let _name = data.name || "";
-		_name = xss(_name.substr(0, 20));
+		let _name = randomName();
 
 		if (_id !== 0) {
 			// Add data to current client list
@@ -59,7 +67,14 @@ io.on('connection', (socket) => {
 			socket.broadcast.emit('join', clients[socket.id]);
 
 			// Note that client has joined in the console
-			console.log(_id, "joined with name:", _name);
+			console.log(_id, "joined. Automatically assigned name:", _name);
+		}
+
+		// Tell user their assigned name
+		if (data.id !== 0) {
+			sockets[socket.id].emit('assignName', {
+				name: _name
+			})
 		}
 	});
 

@@ -14,8 +14,7 @@ const id = Math.round(Date.now() * Math.random() + 1);
 const url = document.documentURI;
 const socket = io.connect(url);
 const users = {};
-var joined = false;
-var name = "";
+var name = undefined;
 
 // ThreeJS vars
 const manager = new THREE.LoadingManager();
@@ -54,13 +53,12 @@ if (!('getContext' in document.createElement('canvas'))) {
 
 // Make sure webgl is enabled on the current machine for performance
 if (WEBGL.isWebGLAvailable()) {
-    // If everything is possible, automatically select the input element
+    // If everything is possible, start the app, otherwise show an error
     init();
     gameLoop();
 } else {
     let warning = WEBGL.getWebGLErrorMessage();
     document.body.appendChild(warning);
-    document.getElementById('name-div-center').remove();
     document.getElementById('canvas-holder').remove();
     throw 'WebGL disabled or not supported';
 }
@@ -70,19 +68,18 @@ if (WEBGL.isWebGLAvailable()) {
 socket.on('connect', () => {
     console.log("Connection established to server");
 
-    document.getElementById('name-submit').addEventListener('click', () => {
-        if (joined === false) {
-            name = document.getElementById('name-input').value;
-            socket.emit('join', {
-                id: id,
-                name: name
-            });
-            joined = true;
-            canvasHolder.style.filter = "blur(0px)";
-            document.getElementById('name-div-center').remove();
-            document.getElementById('block-input').remove();
-        }
-    }, false);
+    // Broadcast join to other users
+    socket.emit('join', {id: id});
+
+    // Unblur screen and give control access
+    canvasHolder.style.filter = "blur(0px)";
+    document.getElementById('block-input').remove();
+});
+
+// Receive assigned name
+socket.on('assignName', (data) => {
+    console.log("Server assigned name:", data.name);
+    name = data.name;
 });
 
 // Respond when other user joins
@@ -96,8 +93,8 @@ socket.on('join', (data) => {
         users[data.id].mesh = mesh;
     }
 
-    // Send name back if you've already joined
-    if (joined) {
+    // Send name back if you know it
+    if (name !== "" && name !== undefined) {
         emitName(data.id);
         emitMove();
     }
@@ -219,13 +216,6 @@ function loadScene(sceneFile) {
 
             // Tell the game to update the renderer
             updateScene = true;
-
-            // Now make name input visible and automatically select it
-            let centerScreen = document.getElementById('name-div-center');
-            centerScreen.style.display = "flex";
-            let input = document.getElementById('name-input');
-            input.focus();
-            input.select();
         },
 
         (xhr) => {
