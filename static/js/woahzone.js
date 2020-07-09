@@ -64,6 +64,7 @@ if (WEBGL.isWebGLAvailable()) {
 }
 
 
+///// ----- ASYNC FUNCTIONS ----- /////
 // Establish connection
 socket.on('connect', () => {
     console.log("Connection established to server");
@@ -78,7 +79,7 @@ socket.on('connect', () => {
 
 // Receive assigned name
 socket.on('assignName', (data) => {
-    console.log("Server assigned name:", data.name);
+    console.log("Welcome, you are:", data.name);
     name = data.name;
 });
 
@@ -87,10 +88,12 @@ socket.on('join', (data) => {
     console.log(data.name, "has joined the server");
     users[data.id] = {'name': data.name}
 
+    // Clone playermodel object for new player
     if (playerModel !== undefined) {
         let mesh = playerModel.clone()
         scene.add(mesh);
         users[data.id].mesh = mesh;
+        createPlayerName(data.name, data.id);
     }
 
     // Send name back if you know it
@@ -111,6 +114,7 @@ socket.on('name', (data) => {
             name: data.name,
             mesh: mesh,
         }
+        createPlayerName(data.name, data.id);
     }
 });
 
@@ -132,12 +136,37 @@ socket.on('move', (data) => {
 socket.on('leave', (id) => {
     if (users[id] !== undefined) {
         console.log(users[id].name, "has disconnected");
+        scene.remove(users[id].text);
         scene.remove(users[id].mesh);
     }
 })
 
+function emitMove() {
+    socket.emit('move', {
+        id: id,
+        pos: player.position,
+        rot: {x: player.rotation.x, y: player.rotation.y, z: player.rotation.z}
+    });
+}
 
-// Synchronous threejs stuff
+function emitName(target) {
+    if (target !== undefined) {
+        socket.emit('name', {
+            id: id,
+            name: name,
+            target: target,
+        });
+    } else {
+        socket.emit('name', {
+            id: id,
+            name: name,
+        });
+    }
+}
+
+
+///// ----- SYNCRHONOUS FUNCTIONS ----- /////
+// ThreeJS handling stuff
 function init() {
     // Load the scene
     scene = new THREE.Scene();
@@ -152,9 +181,6 @@ function init() {
     // Create and configure player
     camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.02, 500);
     player = playerInit();
-
-    // Generate fonts
-    createText("fuck-------------------------------------------fuck");
 
     // Setup the renderer and composer
     renderer = new THREE.WebGLRenderer({antialias: true, powerPreference: "high-performance", stencil: false, alpha: true});
@@ -366,10 +392,34 @@ function playerInit() {
     return player;
 }
 
-function createText() {
+function createPlayerName(name, userid) {
     var textLoader = new THREE.FontLoader();
+
     textLoader.load('font/OpenSans_Regular.json', (font) => {
-        console.log("yes");
+        let colour, fontMat, shapes, geometry, xMid, text;
+
+        colour = 0x000000;
+        fontMat = new THREE.MeshBasicMaterial({
+            color: colour,
+            side: THREE.DoubleSide
+        });
+
+        // CREATE MESH TEXT
+        shapes = font.generateShapes(name, 0.15);
+        geometry = new THREE.ShapeBufferGeometry(shapes);
+        geometry.computeBoundingBox();
+
+        xMid = -.5 * (geometry.boundingBox.max.x-geometry.boundingBox.min.x);
+        geometry.translate(xMid, 0, 0);
+
+        text = new THREE.Mesh(geometry, fontMat);
+        scene.add(text);
+
+        text.parent = users[userid].mesh;
+        text.rotation.y += Math.PI;
+        text.position.y += .6;
+
+        users[userid].text = text;
     });
 }
 
@@ -430,34 +480,12 @@ function gameLoop() {
             player.position.y += (delta * cameraHeave * moveSpd);
         }
 
+        // Broadcast movement to other players
         emitMove();
     }
 
     prevTime = time;
     renderer.render(scene, camera);
-}
-
-function emitMove() {
-    socket.emit('move', {
-        id: id,
-        pos: player.position,
-        rot: {x: player.rotation.x, y: player.rotation.y, z: player.rotation.z}
-    });
-}
-
-function emitName(target) {
-    if (target !== undefined) {
-        socket.emit('name', {
-            id: id,
-            name: name,
-            target: target,
-        });
-    } else {
-        socket.emit('name', {
-            id: id,
-            name: name,
-        });
-    }
 }
 
 
