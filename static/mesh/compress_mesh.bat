@@ -1,1 +1,1 @@
-gltf-pipeline -i model.glb -o model-compressed.glb -d
+gltf-pipeline -i weddingquake.glb -o weddingquake_compressed.glb -d --draco.compressionLevel 7 --draco.quantizePositionBits 16 --draco.unifiedQuantization true --draco.quantizeTexcoordBits 14
