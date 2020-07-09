@@ -19,7 +19,7 @@ var name = undefined;
 // ThreeJS vars
 const manager = new THREE.LoadingManager();
 const canvasHolder = document.getElementById('canvas-holder');
-var camera, scene, renderer, composer, currentScene, updateScene = false, transparentMaterials = [];
+var camera, scene, renderer, composer, currentScene, updateScene = false, transparentMaterials = ['grass_side', 'vines'];
 var loader, root, light, playerModel, finishedLoading = false;
 var controls, player;
 
@@ -484,6 +484,12 @@ function processMaterials(obj) {
 
             // Enable backface culling
             child.material.side = THREE.FrontSide;
+
+            // Don't blur up close
+            if (child.material.map != null) {
+                child.material.map.magFilter = THREE.NearestFilter;
+                child.material.map.minFilter = THREE.LinearMipmapNearestFilter;
+            }
 
             // Enable transparency if the material is tagged as transparent
             if (transparentMaterials.indexOf(child.material.name) > -1) {
