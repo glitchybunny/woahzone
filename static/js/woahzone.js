@@ -15,13 +15,21 @@ const url = document.documentURI;
 const socket = io.connect(url);
 const users = {};
 var name = undefined;
+var animal = undefined;
 
 // ThreeJS vars
 const manager = new THREE.LoadingManager();
+const dracoLoader = new DRACOLoader(manager);
+const gltfLoader = new GLTFLoader(manager);
+const cubeTextureLoader = new THREE.CubeTextureLoader();
+const fontLoader = new THREE.FontLoader(manager);
+var finishedLoading = false;
+
 const canvasHolder = document.getElementById('canvas-holder');
-var camera, scene, renderer, composer, currentScene, updateScene = false, transparentMaterials = ['grass_side', 'vines'];
-var loader, root, light, playerModel, finishedLoading = false;
-var controls, player;
+const transparentMaterials = ['grass_side', 'vines_MAT'];
+const playerModels = {};
+var camera, scene, renderer, composer, controls, player;
+var openSansFont;
 
 var moveForward = false;
 var moveBackward = false;
@@ -36,13 +44,12 @@ var onKeyDown, onKeyUp;
 
 var cameraDir = new THREE.Vector3();
 var cameraMove, cameraStrafe, cameraHeave;
-var moveSpdNormal = 8;
-var moveSpdSprint = 16;
+const moveSpdNormal = 8;
+const moveSpdSprint = 14;
 var moveSpd = moveSpdNormal;
 
-var time, delta;
-var useDeltaTiming = true;
-var weirdTiming = 0;
+var time, delta, moveTimer = 0;
+var useDeltaTiming = true, weirdTiming = 0;
 var prevTime = performance.now();
 
 
@@ -59,7 +66,7 @@ if (WEBGL.isWebGLAvailable()) {
 } else {
     let warning = WEBGL.getWebGLErrorMessage();
     document.body.appendChild(warning);
-    document.getElementById('canvas-holder').remove();
+    canvasHolder.remove();
     throw 'WebGL disabled or not supported';
 }
 
@@ -77,70 +84,80 @@ socket.on('connect', () => {
     document.getElementById('block-input').remove();
 });
 
-// Receive assigned name
-socket.on('assignName', (data) => {
-    console.log("Welcome, you are:", data.name);
+// Receive assigned identity
+socket.on('selfIdentity', (data) => {
     name = data.name;
+    animal = data.animal;
+    console.log("You are an " + animal + " named " + name);
 });
 
-// Respond when other user joins
-socket.on('join', (data) => {
+/// Handle information from other users
+socket.on('otherJoin', (data) => {
     console.log(data.name, "has joined the server");
-    users[data.id] = {'name': data.name}
 
-    // Clone playermodel object for new player
-    if (playerModel !== undefined) {
-        let mesh = playerModel.clone()
-        scene.add(mesh);
-        users[data.id].mesh = mesh;
-        createPlayerName(data.name, data.id);
+    // Load the player data and create them in the world
+    users[data.id] = {
+        'name': data.name,
+        'animal': data.animal,
+        'pos': new THREE.Vector3(0,0,0),
+        'rot': new THREE.Vector3(0,0,0),
+        'oldPos': new THREE.Vector3(0,0,0),
+        'oldRot': new THREE.Vector3(0,0,0),
+        'alpha': 0
     }
+    createOtherPlayer(data.id, data.name, data.animal);
 
-    // Send name back if you know it
+    // Send identity back if you have it
     if (name !== "" && name !== undefined) {
-        emitName(data.id);
+        emitIdentity(data.id);
         emitMove();
     }
-})
+});
 
-// Get other users names
-socket.on('name', (data) => {
+socket.on('otherIdentity', (data) => {
     if (users[data.id] !== undefined) {
         users[data.id].name = data.name;
+        users[data.id].animal = data.animal;
     } else {
-        let mesh = playerModel.clone()
-        scene.add(mesh);
+        console.log(data.name, "is already on the server");
+
+        // Haven't met this player before, so create them on our end
         users[data.id] = {
-            name: data.name,
-            mesh: mesh,
+            'name': data.name,
+            'animal': data.animal,
+            'pos': new THREE.Vector3(0,0,0),
+            'rot': new THREE.Vector3(0,0,0),
+            'oldPos': new THREE.Vector3(0,0,0),
+            'oldRot': new THREE.Vector3(0,0,0),
+            'alpha': 0
         }
-        createPlayerName(data.name, data.id);
+        createOtherPlayer(data.id, data.name, data.animal);
     }
 });
 
-// Get user updating position
-socket.on('move', (data) => {
-    if (users[data.id] !== undefined) {
-        if (users[data.id].mesh !== undefined) {
-            users[data.id].mesh.position.set(data.pos.x, data.pos.y, data.pos.z);
-            users[data.id].mesh.rotation.set(data.rot.x, data.rot.y, data.rot.z);
-        } else {
-            let mesh = playerModel.clone()
-            scene.add(mesh);
-            users[data.id].mesh = mesh;
+socket.on('otherMove', (data) => {
+    let userid = data.id;
+    if (users[userid] !== undefined) {
+        if (users[userid].mesh !== undefined) {
+            users[userid].oldPos.copy(users[userid].mesh.position);
+            users[userid].oldRot.copy(users[userid].mesh.rotation);
         }
+        users[userid].pos.set(data.pos.x, data.pos.y, data.pos.z);
+        users[userid].rot.set(data.rot.x, data.rot.y, data.rot.z);
+        users[userid].alpha = 0;
     }
 });
 
-// Know if other users have disconnected
-socket.on('leave', (id) => {
-    if (users[id] !== undefined) {
-        console.log(users[id].name, "has disconnected");
-        scene.remove(users[id].text);
-        scene.remove(users[id].mesh);
+socket.on('otherDisconnect', (userid) => {
+    if (users[userid] !== undefined) {
+        console.log(users[userid].name, "has disconnected");
+        scene.remove(users[userid].text);
+        scene.remove(users[userid].mesh);
+        users[userid] = undefined;
     }
-})
+});
 
+// Send information about self to others
 function emitMove() {
     socket.emit('move', {
         id: id,
@@ -149,158 +166,108 @@ function emitMove() {
     });
 }
 
-function emitName(target) {
-    if (target !== undefined) {
-        socket.emit('name', {
-            id: id,
-            name: name,
-            target: target,
-        });
-    } else {
-        socket.emit('name', {
-            id: id,
-            name: name,
-        });
-    }
+function emitIdentity(target) {
+    socket.emit('identity', {
+        id: id,
+        name: name,
+        animal: animal,
+        target: target
+    });
 }
 
 
 ///// ----- SYNCRHONOUS FUNCTIONS ----- /////
-// ThreeJS handling stuff
+// ThreeJS initialisation stuff
 function init() {
-    // Load the scene
-    scene = new THREE.Scene();
-    loadScene("./mesh/weddingquake_compressed.glb");
-    scene.background = new THREE.Color(0x000000);
+    // Create the loading manager
+    initManager()
 
-    // Add lighting
-    light = new THREE.HemisphereLight(0xffffff, 0x222222, 1);
-    light.position.set(100, 100, 0);
-    scene.add(light);
-
-    // Create and configure player
-    camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.02, 500);
-    player = playerInit();
-
-    // Setup the renderer and composer
-    renderer = new THREE.WebGLRenderer({antialias: true, powerPreference: "high-performance", stencil: false, alpha: true});
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.outputEncoding = THREE.GammaEncoding;
-    renderer.gammaFactor = 2.2;
-    renderer.shadowMap.type = THREE.BasicShadowMap;
-    canvasHolder.appendChild(renderer.domElement);
+    // Initialise everything in the scene
+    scene = initScene("./mesh/weddingquake.min.glb");
+    initSkybox(scene);
+    initLights(scene);
+    initPlayer(scene);
+    initRenderer();
+    initFonts();
 
     // Add a listener event for window resizing
     window.addEventListener('resize', onWindowResize, false);
 }
 
-function loadScene(sceneFile) {
-    // Change to new scene
-    var progressBar = document.getElementById('progress-bar');
-    var progress = document.getElementById('progress');
-    progress.hidden = false;
-
-    manager.onLoad = function () {
-        // print completion
-        console.log('Loading complete!');
-        finishedLoading = true;
-
-        // remove loading bar
-        progress.hidden = true;
+function initManager() {
+    manager.onStart = function(url, itemsLoaded, itemsTotal) {
+        //console.log('Started loading: ' + url + '\nLoaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.');
     };
 
-    // DRACO Loader for decompression
-    const dracoLoadr = new DRACOLoader();
-    dracoLoadr.setDecoderPath('./js/loaders/draco/');
-    dracoLoadr.setDecoderConfig({ type: 'js' });
-    //draco.getDecoderModule();
+    manager.onProgress = function (url, itemsLoaded, itemsTotal) {
+        document.getElementById('progress-bar').style.width = (itemsLoaded / itemsTotal * 100) + '%';
+        //console.log('Loading file: ' + url + '.\nLoaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.');
+    };
 
-    // Instantiate loader
-    loader = new GLTFLoader(manager);
-    loader.setDRACOLoader(dracoLoadr);
-
-    // Load geometry
-    loader.load(
-        sceneFile,
-
-        (gltf) => {
-            // initialise scene object
-            root = gltf.scene;
-            processMaterials(root);
-
-            // add new scene
-            scene.add(root);
-
-            // Also reset all movement variables to stop a drifting bug that sometimes occurs in safari
-            moveForward = false;
-            moveBackward = false;
-            moveLeft = false;
-            moveRight = false;
-            moveUp = false;
-            moveDown = false;
-            moveSpace = false;
-            moveCtrl = false;
-            moveSprint = false;
-
-            // Tell the game to update the renderer
-            updateScene = true;
-        },
-
-        (xhr) => {
-            document.getElementById('progress-bar').style.width = (xhr.loaded / xhr.total * 100) + '%';
-        },
-
-        (error) => {
-            console.log('An error happened');
-            console.log(error);
-        }
-    );
-
-    // Load player models
-    let playerLoader = new GLTFLoader(manager);
-    loader.load(
-        './mesh/player.glb',
-
-        (gltf) => {
-            // initialise player object
-            playerModel = gltf.scene;
-            processMaterials(playerModel);
-
-            // Tell the game to update the renderer
-            updateScene = true;
-        },
-
-        (xhr) => {
-            document.getElementById('progress-bar').style.width = (xhr.loaded / xhr.total * 100) + '%';
-        },
-
-        (error) => {
-            console.log('An error happened');
-            console.log(error);
-        }
-    );
-
-    // Load skybox
-    let skyboxPath = ["./img/skybox/cloudtop", "jpg"];
-    let skyboxArray = ["_ft.", "_bk.", "_up.", "_dn.", "_rt.", "_lf."];
-    for (let i in skyboxArray) {
-        skyboxArray[i] = skyboxPath[0] + skyboxArray[i] + skyboxPath[1];
-    }
-    let skybox = new THREE.CubeTextureLoader()
-        .load(skyboxArray,
-            (texture) => {
-                // Set background to skybox texture
-                scene.background = texture;
-            });
+    manager.onLoad = function () {
+        console.log('Loading complete!');
+        document.getElementById('progress').hidden = true;
+        finishedLoading = true;
+    };
 }
 
-function playerInit() {
-    // Initialise the player camera and controller
+function initScene(sceneFile) {
+    // Create a new scene
+    let scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+
+    // Use dracoloader for decompression
+    dracoLoader.setDecoderPath('./js/loaders/draco/');
+    dracoLoader.setDecoderConfig({ type: 'js' });
+
+    // Load the scene geometry
+    gltfLoader.setDRACOLoader(dracoLoader);
+    gltfLoader.load(
+        sceneFile,
+        (gltf) => {
+            // Add the level to the scene
+            let root = gltf.scene;
+            processMaterials(root);
+            scene.add(root);
+        },
+        (xhr) => {
+            //document.getElementById('progress-bar').style.width = (xhr.loaded / xhr.total * 100) + '%';
+        },
+        (error) => {
+            console.log('Error loading', sceneFile);
+            console.log(error);
+        }
+    );
+
+    // Return the scene
+    return scene;
+}
+
+function initSkybox(scene) {
+    // Load skybox
+    let skyboxArray = ["_ft.", "_bk.", "_up.", "_dn.", "_rt.", "_lf."];
+    for (let i in skyboxArray) {
+        skyboxArray[i] = "./img/skybox/cloudtop" + skyboxArray[i] + "jpg";
+    }
+    cubeTextureLoader.load(skyboxArray, (texture) => {scene.background = texture});
+}
+
+function initLights(scene) {
+    // A single huge hemisphere light for global shading
+    let light = new THREE.HemisphereLight(0xffffff, 0x222222, 1);
+    light.position.set(100, 100, 0);
+
+    scene.add(light);
+}
+
+function initPlayer(scene) {
+    camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.02, 500);
     controls = new PointerLockControls(camera, document.body);
+
     player = controls.getObject();
     player.position.fromArray([0, 0, 0]);
-    player.speedMultiplier = 1;
+    player.speedMultiplier = 1
+
     scene.add(player);
 
     canvasHolder.addEventListener('click', function () {
@@ -344,11 +311,9 @@ function playerInit() {
             case 16: // shift
                 moveSprint = true;
                 break;
-            case 80: // p
-                console.log(player.position, player.rotation);
-                break;
         }
     };
+    document.addEventListener('keydown', onKeyDown, false);
 
     onKeyUp = function (event) {
         switch (event.keyCode) {
@@ -385,44 +350,38 @@ function playerInit() {
                 break;
         }
     };
-
-    document.addEventListener('keydown', onKeyDown, false);
     document.addEventListener('keyup', onKeyUp, false);
-
-    return player;
 }
 
-function createPlayerName(name, userid) {
-    var textLoader = new THREE.FontLoader();
-
-    textLoader.load('font/OpenSans_Regular.json', (font) => {
-        let colour, fontMat, shapes, geometry, xMid, text;
-
-        colour = 0x000000;
-        fontMat = new THREE.MeshBasicMaterial({
-            color: colour,
-            side: THREE.DoubleSide
-        });
-
-        // CREATE MESH TEXT
-        shapes = font.generateShapes(name, 0.15);
-        geometry = new THREE.ShapeBufferGeometry(shapes);
-        geometry.computeBoundingBox();
-
-        xMid = -.5 * (geometry.boundingBox.max.x-geometry.boundingBox.min.x);
-        geometry.translate(xMid, 0, 0);
-
-        text = new THREE.Mesh(geometry, fontMat);
-        scene.add(text);
-
-        text.parent = users[userid].mesh;
-        text.rotation.y += Math.PI;
-        text.position.y += .6;
-
-        users[userid].text = text;
-    });
+function initRenderer() {
+    renderer = new THREE.WebGLRenderer({antialias: true, powerPreference: "high-performance", stencil: false, alpha: true});
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputEncoding = THREE.GammaEncoding;
+    renderer.gammaFactor = 2.2;
+    renderer.shadowMap.type = THREE.BasicShadowMap;
+    canvasHolder.appendChild(renderer.domElement);
 }
 
+function initFonts() {
+    fontLoader.load('./font/OpenSans_Regular.json',
+        (font) => {
+            openSansFont = font;
+
+            // If there are any users already in the server before the font loaded, generate text for them
+            for (let userid in users) {
+                if (users[userid].text == undefined) {
+                    let textMesh = createTextMesh(users[userid].name, 0.12);
+                    users[userid].text = textMesh;
+                    scene.add(textMesh);
+                }
+            }
+        }
+    );
+}
+
+
+// ThreeJS main game/render loop
 function gameLoop() {
     setTimeout(function () {
         requestAnimationFrame(gameLoop);
@@ -443,9 +402,8 @@ function gameLoop() {
         delta = 0.018;
     }
 
-    if (controls.isLocked || updateScene) {
-        updateScene = false;
-
+    // Process player input
+    if (controls.isLocked) {
         // Sprinting
         if (moveSprint) {
             moveSpd = moveSpdSprint * player.speedMultiplier;
@@ -480,12 +438,111 @@ function gameLoop() {
             player.position.y += (delta * cameraHeave * moveSpd);
         }
 
-        // Broadcast movement to other players
-        emitMove();
+        // Broadcast movement to other players 10 times per second
+        moveTimer += delta;
+        if (moveTimer >= 0.1) {
+            moveTimer = 0;
+            emitMove();
+        }
+    }
+
+    // Move other players (interpolate movement)
+    for (let userid in users) {
+        if (users[userid] !== undefined) {
+            let oldPos = users[userid].oldPos;
+            let oldRot = users[userid].oldRot;
+            let pos = users[userid].pos;
+            let rot = users[userid].rot;
+            let a = users[userid].alpha;
+
+            if (users[userid].mesh !== undefined) {
+                users[userid].mesh.position.lerpVectors(oldPos, pos, a);
+                //console.log(users[userid].mesh.rotation);
+                users[userid].mesh.rotation.set(rot.x, rot.y, rot.z);
+
+                if (users[userid].text !== undefined) {
+                    users[userid].text.position.copy(users[userid].mesh.position);
+                    users[userid].text.rotation.set(rot.x, rot.y+Math.PI, -rot.z);
+                }
+            }
+
+            users[userid].alpha = Math.min(a + delta*10, 1);
+        }
     }
 
     prevTime = time;
     renderer.render(scene, camera);
+}
+
+
+// Loading functions
+function loadPlayerModel(animal) {
+    // Load a specific player model into the scene
+    gltfLoader.load(
+        './mesh/playermodels/' + animal + '.glb',
+        (gltf) => {
+            // Once model has been downloaded, scale it appropriately and load it into memory
+            let model = gltf.scene;
+            processMaterials(model);
+            playerModels[animal] = model;
+
+            // Also create an instance of the model for all players with that model
+            for (let userid in users) {
+                if (users[userid].animal === animal) {
+                    users[userid].mesh = playerModels[animal].clone();
+                    scene.add(users[userid].mesh);
+                }
+            }
+        }
+    );
+}
+
+function createOtherPlayer(userid, name, animal) {
+    // Remove any old playermodel/font data
+    scene.remove(users[userid].text);
+    scene.remove(users[userid].mesh);
+
+    // Load the player's 3D model based on their animal
+    if (animal in playerModels && playerModels[animal] !== undefined) {
+        // If it's already loaded, assign it to the player
+        users[userid].mesh = playerModels[animal].clone();
+        scene.add(users[userid].mesh);
+    } else if (!(animal in playerModels)) {
+        // If it's not loaded, and not being loaded, then load it into the scene
+        // loadPlayerModel() will automatically handle assigning it to the player when the mesh is loaded
+        playerModels[animal] = undefined;
+        loadPlayerModel(animal);
+    }
+
+    // Add text above the player's head if the font has loaded
+    // If the font hasn't loaded yet, it will automatically add text above all current player's heads when it loads
+    if (openSansFont !== undefined) {
+        // Create the text mesh and assign it to the player
+        let textMesh = createTextMesh(name, 0.12);
+        users[userid].text = textMesh;
+        scene.add(textMesh);
+
+        //textMesh.rotation.y += Math.PI;
+        //textMesh.position.y += .4;
+    }
+}
+
+function createTextMesh(message, fontSize) {
+    let textMat, textShapes, textGeometry, textXOffset, textMesh;
+
+    // Create the text geometry and material
+    textMat = new THREE.MeshBasicMaterial({color: 0x000000, side: THREE.DoubleSide})
+    textShapes = openSansFont.generateShapes(message, 0.12);
+    textGeometry = new THREE.ShapeBufferGeometry(textShapes);
+    textGeometry.computeBoundingBox();
+
+    // Center align text
+    textXOffset = -0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x);
+    textGeometry.translate(textXOffset, 0.4, 0)
+
+    // Generate text mesh
+    textMesh = new THREE.Mesh(textGeometry, textMat);
+    return textMesh;
 }
 
 
@@ -513,11 +570,12 @@ function processMaterials(obj) {
             // Enable backface culling
             child.material.side = THREE.FrontSide;
 
-            // Don't blur up close
-            if (child.material.map != null) {
+            // Don't blur materials up close
+            /*if (child.material.map != null) {
                 child.material.map.magFilter = THREE.NearestFilter;
                 child.material.map.minFilter = THREE.LinearMipmapNearestFilter;
             }
+             */
 
             // Enable transparency if the material is tagged as transparent
             if (transparentMaterials.indexOf(child.material.name) > -1) {
@@ -538,4 +596,11 @@ function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function removeElement(array, elem) {
+    var index = array.indexOf(elem);
+    if (index > -1) {
+        array.splice(index, 1);
+    }
 }

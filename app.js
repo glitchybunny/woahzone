@@ -28,9 +28,13 @@ app.use(allowCrossDomain);
 const nameList = ["Alfa", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett", "Kilo",
 	"Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey",
 	"X-ray", "Yankee", "Zulu"];
+const animalList = ["ArcticFox"];
 
 function randomName() {
 	return nameList[nameList.length * Math.random() | 0];
+}
+function randomAnimal() {
+	return animalList[animalList.length * Math.random() | 0];
 }
 
 // Basic client list (to keep track of currently connected client IDs and names only, nothing more)
@@ -47,7 +51,7 @@ io.on('connection', (socket) => {
 	socket.on('disconnecting', (data) => {
 		// Only broadcast to other clients that this one has left IF it has triggered a join event
 		if (clients[socket.id].id !== undefined) {
-			socket.broadcast.emit('leave', clients[socket.id].id);
+			socket.broadcast.emit('otherDisconnect', clients[socket.id].id);
 		}
 		delete clients[socket.id];
 	});
@@ -57,60 +61,67 @@ io.on('connection', (socket) => {
 		// Make sure name is XSS safe
 		let _id = data.id || 0;
 		let _name = randomName();
+		let _animal = randomAnimal();
 
 		if (_id !== 0) {
 			// Add data to current client list
 			clients[socket.id].id = _id;
 			clients[socket.id].name = _name;
+			clients[socket.id].animal = _animal;
 
 			// Broadcast join to all others (which will then respond with name for original client)
-			socket.broadcast.emit('join', clients[socket.id]);
+			socket.broadcast.emit('otherJoin', clients[socket.id]);
 
 			// Note that client has joined in the console
-			console.log(_id, "joined. Automatically assigned name:", _name);
+			console.log(_id, "joined. Name:", _name, ", Animal:", _animal);
 		}
 
 		// Tell user their assigned name
 		if (data.id !== 0) {
-			sockets[socket.id].emit('assignName', {
-				name: _name
+			sockets[socket.id].emit('selfIdentity', {
+				name: _name,
+				animal: _animal
 			})
 		}
 	});
 
 	// Listen for name change events
-	socket.on('name', (data) => {
+	socket.on('identity', (data) => {
 		// Make sure name is XSS safe
 		let _id = data.id;
 		let _name = data.name;
+		let _animal = data.animal;
 		_name = xss(_name.substr(0, 20));
 
 		// Update name in client list
 		clients[socket.id].name = _name;
+		clients[socket.id].animal = _animal;
 
 		// If there's a target, only send the name to that target
 		if (data.target !== undefined) {
 			// Iterate over connected clients to find target and send them the message
 			for (let c in clients) {
 				if (clients[c].id == data.target) {
-					sockets[c].emit('name', {
+					sockets[c].emit('otherIdentity', {
 						id: _id,
-						name: _name
+						name: _name,
+						animal: _animal
 					})
 				}
 			}
 		} else {
 			// Otherwise broadcast name change to all other users
-			socket.broadcast.emit('name', {
+			socket.broadcast.emit('otherIdentity', {
 				id: _id,
-				name: _name
+				name: _name,
+				animal: _animal
 			});
 		}
 	});
 
 	// Listen for movement events
 	socket.on('move', (data) => {
-		socket.broadcast.emit('move', data);
+		socket.broadcast.emit('otherMove', data);
 	});
 });
 
