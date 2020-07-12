@@ -14,6 +14,8 @@ const id = Math.round(Date.now() * Math.random() + 1);
 const url = document.documentURI;
 const socket = io.connect(url);
 const users = {};
+const tickRate = 15;
+const frameRate = 60;
 var name = undefined;
 var animal = undefined;
 
@@ -96,15 +98,6 @@ socket.on('otherJoin', (data) => {
     console.log(data.name, "has joined the server");
 
     // Load the player data and create them in the world
-    users[data.id] = {
-        'name': data.name,
-        'animal': data.animal,
-        'pos': new THREE.Vector3(0,0,0),
-        'rot': new THREE.Vector3(0,0,0),
-        'oldPos': new THREE.Vector3(0,0,0),
-        'oldRot': new THREE.Vector3(0,0,0),
-        'alpha': 0
-    }
     createOtherPlayer(data.id, data.name, data.animal);
 
     // Send identity back if you have it
@@ -122,28 +115,18 @@ socket.on('otherIdentity', (data) => {
         console.log(data.name, "is already on the server");
 
         // Haven't met this player before, so create them on our end
-        users[data.id] = {
-            'name': data.name,
-            'animal': data.animal,
-            'pos': new THREE.Vector3(0,0,0),
-            'rot': new THREE.Vector3(0,0,0),
-            'oldPos': new THREE.Vector3(0,0,0),
-            'oldRot': new THREE.Vector3(0,0,0),
-            'alpha': 0
-        }
         createOtherPlayer(data.id, data.name, data.animal);
     }
 });
 
 socket.on('otherMove', (data) => {
     let userid = data.id;
-    if (users[userid] !== undefined) {
+    if (userid in users) {
         if (users[userid].mesh !== undefined) {
             users[userid].oldPos.copy(users[userid].mesh.position);
-            users[userid].oldRot.copy(users[userid].mesh.rotation);
         }
         users[userid].pos.set(data.pos.x, data.pos.y, data.pos.z);
-        users[userid].rot.set(data.rot.x, data.rot.y, data.rot.z);
+        users[userid].rot.set(data.rot.x, data.rot.y, data.rot.z, data.rot.w);
         users[userid].alpha = 0;
     }
 });
@@ -162,7 +145,7 @@ function emitMove() {
     socket.emit('move', {
         id: id,
         pos: player.position,
-        rot: {x: player.rotation.x, y: player.rotation.y, z: player.rotation.z}
+        rot: {x:player.quaternion.x, y:player.quaternion.y, z:player.quaternion.z, w:player.quaternion.w}
     });
 }
 
@@ -385,7 +368,7 @@ function initFonts() {
 function gameLoop() {
     setTimeout(function () {
         requestAnimationFrame(gameLoop);
-    }, 1000/60);
+    }, 1000/frameRate);
 
     time = performance.now();
     if (useDeltaTiming) {
@@ -399,13 +382,13 @@ function gameLoop() {
             }
         }
     } else {
-        delta = 0.018;
+        delta = 1/frameRate;
     }
 
     // Process player input
     if (controls.isLocked) {
         // Sprinting
-        if (moveSprint) {
+        if (moveSprint || !useDeltaTiming) {
             moveSpd = moveSpdSprint * player.speedMultiplier;
         } else {
             moveSpd = moveSpdNormal * player.speedMultiplier;
@@ -438,9 +421,9 @@ function gameLoop() {
             player.position.y += (delta * cameraHeave * moveSpd);
         }
 
-        // Broadcast movement to other players 10 times per second
+        // Broadcast movement to other players n times per second
         moveTimer += delta;
-        if (moveTimer >= 0.1) {
+        if (moveTimer >= 1/tickRate) {
             moveTimer = 0;
             emitMove();
         }
@@ -450,23 +433,20 @@ function gameLoop() {
     for (let userid in users) {
         if (users[userid] !== undefined) {
             let oldPos = users[userid].oldPos;
-            let oldRot = users[userid].oldRot;
             let pos = users[userid].pos;
             let rot = users[userid].rot;
             let a = users[userid].alpha;
 
             if (users[userid].mesh !== undefined) {
                 users[userid].mesh.position.lerpVectors(oldPos, pos, a);
-                //console.log(users[userid].mesh.rotation);
-                users[userid].mesh.rotation.set(rot.x, rot.y, rot.z);
-
+                users[userid].mesh.quaternion.rotateTowards(rot, users[userid].mesh.quaternion.angleTo(rot) * (tickRate/60));
                 if (users[userid].text !== undefined) {
                     users[userid].text.position.copy(users[userid].mesh.position);
-                    users[userid].text.rotation.set(rot.x, rot.y+Math.PI, -rot.z);
+                    users[userid].text.rotation.copy(users[userid].mesh.rotation);
                 }
             }
 
-            users[userid].alpha = Math.min(a + delta*10, 1);
+            users[userid].alpha = Math.min(a + delta*(tickRate-1), 2);
         }
     }
 
@@ -479,7 +459,7 @@ function gameLoop() {
 function loadPlayerModel(animal) {
     // Load a specific player model into the scene
     gltfLoader.load(
-        './mesh/playermodels/' + animal + '.glb',
+        './mesh/playermodels/' + animal + '.min.glb',
         (gltf) => {
             // Once model has been downloaded, scale it appropriately and load it into memory
             let model = gltf.scene;
@@ -488,9 +468,11 @@ function loadPlayerModel(animal) {
 
             // Also create an instance of the model for all players with that model
             for (let userid in users) {
-                if (users[userid].animal === animal) {
-                    users[userid].mesh = playerModels[animal].clone();
-                    scene.add(users[userid].mesh);
+                if (users[userid] !== undefined) {
+                    if (users[userid].animal === animal) {
+                        users[userid].mesh = playerModels[animal].clone();
+                        scene.add(users[userid].mesh);
+                    }
                 }
             }
         }
@@ -498,9 +480,15 @@ function loadPlayerModel(animal) {
 }
 
 function createOtherPlayer(userid, name, animal) {
-    // Remove any old playermodel/font data
-    scene.remove(users[userid].text);
-    scene.remove(users[userid].mesh);
+    // Init userid entry
+    users[userid] = {
+        'name': name,
+        'animal': animal,
+        'pos': new THREE.Vector3(0,0,0),
+        'rot': new THREE.Quaternion(0, 0, 0, 0),
+        'oldPos': new THREE.Vector3(0,0,0),
+        'alpha': 0
+    }
 
     // Load the player's 3D model based on their animal
     if (animal in playerModels && playerModels[animal] !== undefined) {
@@ -521,9 +509,6 @@ function createOtherPlayer(userid, name, animal) {
         let textMesh = createTextMesh(name, 0.12);
         users[userid].text = textMesh;
         scene.add(textMesh);
-
-        //textMesh.rotation.y += Math.PI;
-        //textMesh.position.y += .4;
     }
 }
 
@@ -538,7 +523,8 @@ function createTextMesh(message, fontSize) {
 
     // Center align text
     textXOffset = -0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x);
-    textGeometry.translate(textXOffset, 0.4, 0)
+    textGeometry.translate(textXOffset, 0.4, 0);
+    textGeometry.rotateY(Math.PI);
 
     // Generate text mesh
     textMesh = new THREE.Mesh(textGeometry, textMat);
