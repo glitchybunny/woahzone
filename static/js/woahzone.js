@@ -30,7 +30,7 @@ var finishedLoading = false;
 const canvasHolder = document.getElementById('canvas-holder');
 const transparentMaterials = ['grass_side', 'vines_MAT'];
 const playerModels = {};
-var camera, scene, renderer, composer, controls, player;
+var camera, scene, renderer, controls, player;
 var openSansFont;
 
 var moveForward = false;
@@ -42,9 +42,7 @@ var moveDown = false;
 var moveSpace = false;
 var moveCtrl = false;
 var moveSprint = false;
-var onKeyDown, onKeyUp;
 
-var cameraDir = new THREE.Vector3();
 var cameraMove, cameraStrafe, cameraHeave;
 const moveSpdNormal = 8;
 const moveSpdSprint = 14;
@@ -198,6 +196,7 @@ function initScene(sceneFile) {
     // Create a new scene
     let scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000000);
+    //scene.overrideMaterial = new THREE.MeshLambertMaterial();  <--- Funny gamer mode
 
     // Use dracoloader for decompression
     dracoLoader.setDecoderPath('./js/loaders/draco/');
@@ -212,6 +211,7 @@ function initScene(sceneFile) {
             let root = gltf.scene;
             processMaterials(root);
             scene.add(root);
+            scene.matrixAutoUpdate = false;
         },
         (xhr) => {
             //document.getElementById('progress-bar').style.width = (xhr.loaded / xhr.total * 100) + '%';
@@ -244,7 +244,7 @@ function initLights(scene) {
 }
 
 function initPlayer(scene) {
-    camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.02, 500);
+    camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.02, 40);
     controls = new PointerLockControls(camera, document.body);
 
     player = controls.getObject();
@@ -259,90 +259,91 @@ function initPlayer(scene) {
         }
     }, false);
 
-    onKeyDown = function (event) {
-        switch (event.keyCode) {
-            case 38: // up
-            case 87: // w
+    document.addEventListener('keydown', function (event) {
+        switch (event.code) {
+            case "ArrowUp":
+            case "KeyW":
                 moveForward = true;
                 break;
-            case 37: // left
-            case 65: // a
+            case "ArrowLeft":
+            case "KeyA":
                 moveLeft = true;
                 break;
-            case 40: // down
-            case 83: // s
+            case "ArrowDown":
+            case "KeyS":
                 moveBackward = true;
                 break;
-            case 39: // right
-            case 68: // d
+            case "ArrowRight":
+            case "KeyD":
                 moveRight = true;
                 break;
-            case 69: // e
-            case 33: // page up
+            case "KeyE":
+            case "PageUp":
                 moveUp = true;
                 break;
-            case 81: // q
-            case 34: // page down
+            case "KeyQ":
+            case "PageDown":
                 moveDown = true;
                 break;
-            case 32: // space
+            case "Space":
                 moveSpace = true;
                 break;
-            case 17: // control
+            case "ControlLeft":
                 moveCtrl = true;
                 break;
-            case 16: // shift
+            case "ShiftLeft":
                 moveSprint = true;
                 break;
         }
-    };
-    document.addEventListener('keydown', onKeyDown, false);
+    }, false);
 
-    onKeyUp = function (event) {
-        switch (event.keyCode) {
-            case 38: // up
-            case 87: // w
+    document.addEventListener('keyup', function (event) {
+        switch (event.code) {
+            case "ArrowUp":
+            case "KeyW":
                 moveForward = false;
                 break;
-            case 37: // left
-            case 65: // a
+            case "ArrowLeft":
+            case "KeyA":
                 moveLeft = false;
                 break;
-            case 40: // down
-            case 83: // s
+            case "ArrowDown":
+            case "KeyS":
                 moveBackward = false;
                 break;
-            case 39: // right
-            case 68: // d
+            case "ArrowRight":
+            case "KeyD":
                 moveRight = false;
                 break;
-            case 32: // space
-                moveSpace = false;
-            case 69: // e
-            case 33: // page up
+            case "KeyE":
+            case "PageUp":
                 moveUp = false;
                 break;
-            case 17: // control
-                moveCtrl = false;
-            case 81: // q
-            case 34: // page down
+            case "KeyQ":
+            case "PageDown":
                 moveDown = false;
                 break;
-            case 16: // shift
+            case "Space":
+                moveSpace = false;
+                break;
+            case "ControlLeft":
+                moveCtrl = false;
+                break;
+            case "ShiftLeft":
                 moveSprint = false;
                 break;
         }
-    };
-    document.addEventListener('keyup', onKeyUp, false);
+    }, false);
 }
 
 function initRenderer() {
-    renderer = new THREE.WebGLRenderer({antialias: true, powerPreference: "high-performance", stencil: false, alpha: true});
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:"high-performance", stencil:false, alpha:false, depth:true, precision:"lowp"});
+    renderer.setPixelRatio(1);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.outputEncoding = THREE.GammaEncoding;
     renderer.gammaFactor = 2.2;
-    renderer.shadowMap.type = THREE.BasicShadowMap;
+    renderer.gammaOutput = true;
+    //renderer.shadowMap.type = THREE.BasicShadowMap;
     canvasHolder.appendChild(renderer.domElement);
 }
 
@@ -353,7 +354,7 @@ function initFonts() {
 
             // If there are any users already in the server before the font loaded, generate text for them
             for (let userid in users) {
-                if (users[userid].text == undefined) {
+                if (users[userid].text === undefined) {
                     let textMesh = createTextMesh(users[userid].name, 0.12);
                     users[userid].text = textMesh;
                     scene.add(textMesh);
@@ -366,15 +367,20 @@ function initFonts() {
 
 // ThreeJS main game/render loop
 function gameLoop() {
+    /*
     setTimeout(function () {
         requestAnimationFrame(gameLoop);
+        // honestly FUCK whatever the fuck is happening
+        // when I try to cap this
     }, 1000/frameRate);
+     */
+    requestAnimationFrame(gameLoop);
 
     time = performance.now();
     if (useDeltaTiming) {
         delta = (time - prevTime) / 1000;
-        // some code that checks if timing is weird and then turns off deltatiming
-        if (delta == 0.1) {
+        // some code that checks if timing is weird and then turns off delta-timing
+        if (delta === 0.1) {
             weirdTiming += 1;
             if (weirdTiming === 5) {
                 useDeltaTiming = false;
@@ -388,20 +394,20 @@ function gameLoop() {
     // Process player input
     if (controls.isLocked) {
         // Sprinting
-        if (moveSprint || !useDeltaTiming) {
+        if (moveSprint) {
             moveSpd = moveSpdSprint * player.speedMultiplier;
         } else {
             moveSpd = moveSpdNormal * player.speedMultiplier;
         }
 
         // Move forwards/backwards
-        cameraMove = Number(moveForward) - Number(moveBackward);
+        cameraMove = 1*moveForward - 1*moveBackward;
         if (cameraMove !== 0) {
             player.translateZ(delta * cameraMove * moveSpd * -1);
         }
 
         // Move left/right
-        cameraStrafe = Number(moveRight) - Number(moveLeft);
+        cameraStrafe = 1*moveRight - 1*moveLeft;
         if (cameraStrafe !== 0) {
             player.translateX(delta * cameraStrafe * moveSpd);
         }
@@ -416,17 +422,17 @@ function gameLoop() {
                 moveDown = false;
             }
         }
-        cameraHeave = Number(moveUp) - Number(moveDown);
+        cameraHeave = 1*moveUp - 1*moveDown;
         if (cameraHeave !== 0) {
             player.position.y += (delta * cameraHeave * moveSpd);
         }
+    }
 
-        // Broadcast movement to other players n times per second
-        moveTimer += delta;
-        if (moveTimer >= 1/tickRate) {
-            moveTimer = 0;
-            emitMove();
-        }
+    // Broadcast movement to other players n times per second
+    moveTimer += delta;
+    if (moveTimer >= 1/tickRate) {
+        moveTimer = 0;
+        emitMove();
     }
 
     // Move other players (interpolate movement)
@@ -517,7 +523,7 @@ function createTextMesh(message, fontSize) {
 
     // Create the text geometry and material
     textMat = new THREE.MeshBasicMaterial({color: 0x000000, side: THREE.DoubleSide})
-    textShapes = openSansFont.generateShapes(message, 0.12);
+    textShapes = openSansFont.generateShapes(message, fontSize);
     textGeometry = new THREE.ShapeBufferGeometry(textShapes);
     textGeometry.computeBoundingBox();
 
@@ -533,44 +539,34 @@ function createTextMesh(message, fontSize) {
 
 
 // Miscellaneous functions
-function dumpObject(obj, lines = [], isLast = true, prefix = '') {
-    const localPrefix = isLast ? '└─' : '├─';
-    lines.push(`${prefix}${prefix ? localPrefix : ''}${obj.name || '*no-name*'} [${obj.type}]`);
-    const newPrefix = prefix + (isLast ? '  ' : '│ ');
-    const lastNdx = obj.children.length - 1;
-    obj.children.forEach((child, ndx) => {
-        const isLast = ndx === lastNdx;
-        dumpObject(child, lines, isLast, newPrefix);
-    });
-    return lines;
-}
-
 function processMaterials(obj) {
     // Recursively goes through all materials and modifies them so the scene is displayed correctly
     //  - Enables backface culling on all materials
     //  - Enables transparency for some materials
 
-    obj.children.forEach((child, ndx) => {
+    obj.children.forEach((child) => {
         if (child.hasOwnProperty("material")) {
 
             // Enable backface culling
             child.material.side = THREE.FrontSide;
 
             // Don't blur materials up close
-            /*if (child.material.map != null) {
+            if (child.material.map != null) {
                 child.material.map.magFilter = THREE.NearestFilter;
-                child.material.map.minFilter = THREE.LinearMipmapNearestFilter;
+                child.material.map.minFilter = THREE.NearestMipmapNearestFilter;//THREE.LinearMipmapNearestFilter;
             }
-             */
 
             // Enable transparency if the material is tagged as transparent
             if (transparentMaterials.indexOf(child.material.name) > -1) {
-                child.material.transparent = true;
+                //child.material.transparent = true;
                 child.material.alphaTest = 0.2;
             } else {
-                child.material.transparent = false;
+                //child.material.transparent = false;
                 child.material.alphaTest = 1;
             }
+
+            child.material.transparent = false;
+            child.material.color.convertSRGBToLinear();
 
             // TODO: Materials could be converted into MeshLambertMaterial instead of MeshStandardMaterial for optimisation, would scene.overrideMaterial work?
         }
@@ -582,11 +578,4 @@ function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-}
-
-function removeElement(array, elem) {
-    var index = array.indexOf(elem);
-    if (index > -1) {
-        array.splice(index, 1);
-    }
 }
