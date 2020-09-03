@@ -3,54 +3,51 @@
     a multiplayer vibe experiment by Riley Taylor (rtay.io)
 */
 
-// Imports
+/// --- IMPORTS --- ///
 import * as THREE from './three.module.js';
 import {GLTFLoader} from './loaders/GLTFLoader.js';
 import {DRACOLoader} from './loaders/DRACOLoader.js';
 import {PointerLockControls} from './controls/PointerLockControls.js';
 
-// Socket vars
-const id = Math.round(Date.now() * Math.random() + 1);
-const url = document.documentURI;
-const socket = io.connect(url);
-const users = {};
-const tickRate = 15;
-const frameRate = 60;
+/// --- SOCKET CONSTANTS --- ///
+const ID = Math.round(Date.now() * Math.random() + 1);
+const SOCKET = io.connect(document.documentURI);
+const USERS = {};
+const TICKRATE = 15;
+const FRAMERATE = 60;
+
+/// --- THREEJS CONSTANTS --- ///
+const MANAGER = new THREE.LoadingManager();
+const DRACO_LOADER = new DRACOLoader(MANAGER);
+const GLTF_LOADER = new GLTFLoader(MANAGER);
+const CUBE_TEXTURE_LOADER = new THREE.CubeTextureLoader();
+const FONT_LOADER = new THREE.FontLoader(MANAGER);
+
+const CANVAS_HOLDER = document.getElementById('canvas-holder');
+
+const CAMERA = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.02, 60);
+const SCENE = new THREE.Scene();
+const RENDERER = new THREE.WebGLRenderer({antialias:true, powerPreference:"high-performance", stencil:false, alpha:false, depth:true, precision:"lowp"});
+const CONTROLS = new PointerLockControls(CAMERA, document.body);
+const PLAYER = CONTROLS.getObject();
+
+const TRANSPARENT_MATERIALS = ['grass_side', 'vines_MAT'];
+const PLAYER_MODELS = {};
+
+const DIR = {FORWARD:0, BACKWARD:1, LEFT:2, RIGHT:3, UP:4, DOWN:5, SPRINT:6};
+const PLAYER_MOVE = [0, 0, 0, 0, 0, 0, 0];
+const SPEED_NORMAL = 8;
+const SPEED_SPRINT = 14;
+
+/// --- VARIABLES --- ///
 var name = undefined;
 var animal = undefined;
-
-// ThreeJS vars
-const manager = new THREE.LoadingManager();
-const dracoLoader = new DRACOLoader(manager);
-const gltfLoader = new GLTFLoader(manager);
-const cubeTextureLoader = new THREE.CubeTextureLoader();
-const fontLoader = new THREE.FontLoader(manager);
-var finishedLoading = false;
-
-const canvasHolder = document.getElementById('canvas-holder');
-const transparentMaterials = ['grass_side', 'vines_MAT'];
-const playerModels = {};
-var camera, scene, renderer, controls, player;
-var openSansFont;
-
-var moveForward = false;
-var moveBackward = false;
-var moveLeft = false;
-var moveRight = false;
-var moveUp = false;
-var moveDown = false;
-var moveSpace = false;
-var moveCtrl = false;
-var moveSprint = false;
-
-var cameraMove, cameraStrafe, cameraHeave;
-const moveSpdNormal = 8;
-const moveSpdSprint = 14;
-var moveSpd = moveSpdNormal;
 
 var time, delta, moveTimer = 0;
 var useDeltaTiming = true, weirdTiming = 0;
 var prevTime = performance.now();
+
+var openSansFont;
 
 
 // This demo depends on the canvas element
@@ -58,7 +55,7 @@ if (!('getContext' in document.createElement('canvas'))) {
     alert('Sorry, it looks like your browser does not support canvas!');
 }
 
-// Make sure webgl is enabled on the current machine for performance
+// Also make sure webgl is enabled on the current machine
 if (WEBGL.isWebGLAvailable()) {
     // If everything is possible, start the app, otherwise show an error
     init();
@@ -66,33 +63,33 @@ if (WEBGL.isWebGLAvailable()) {
 } else {
     let warning = WEBGL.getWebGLErrorMessage();
     document.body.appendChild(warning);
-    canvasHolder.remove();
+    CANVAS_HOLDER.remove();
     throw 'WebGL disabled or not supported';
 }
 
 
 ///// ----- ASYNC FUNCTIONS ----- /////
 // Establish connection
-socket.on('connect', () => {
+SOCKET.on('connect', () => {
     console.log("Connection established to server");
 
     // Broadcast join to other users
-    socket.emit('join', {id: id});
+    SOCKET.emit('join', {id: ID});
 
     // Unblur screen and give control access
-    canvasHolder.style.filter = "blur(0px)";
+    CANVAS_HOLDER.style.filter = "blur(0px)";
     document.getElementById('block-input').remove();
 });
 
 // Receive assigned identity
-socket.on('selfIdentity', (data) => {
+SOCKET.on('selfIdentity', (data) => {
     name = data.name;
     animal = data.animal;
     console.log("You are an " + animal + " named " + name);
 });
 
 /// Handle information from other users
-socket.on('otherJoin', (data) => {
+SOCKET.on('otherJoin', (data) => {
     console.log(data.name, "has joined the server");
 
     // Load the player data and create them in the world
@@ -105,10 +102,10 @@ socket.on('otherJoin', (data) => {
     }
 });
 
-socket.on('otherIdentity', (data) => {
-    if (users[data.id] !== undefined) {
-        users[data.id].name = data.name;
-        users[data.id].animal = data.animal;
+SOCKET.on('otherIdentity', (data) => {
+    if (USERS[data.id] !== undefined) {
+        USERS[data.id].name = data.name;
+        USERS[data.id].animal = data.animal;
     } else {
         console.log(data.name, "is already on the server");
 
@@ -117,39 +114,39 @@ socket.on('otherIdentity', (data) => {
     }
 });
 
-socket.on('otherMove', (data) => {
+SOCKET.on('otherMove', (data) => {
     let userid = data.id;
-    if (userid in users) {
-        if (users[userid].mesh !== undefined) {
-            users[userid].oldPos.copy(users[userid].mesh.position);
+    if (userid in USERS) {
+        if (USERS[userid].mesh !== undefined) {
+            USERS[userid].oldPos.copy(USERS[userid].mesh.position);
         }
-        users[userid].pos.set(data.pos.x, data.pos.y, data.pos.z);
-        users[userid].rot.set(data.rot.x, data.rot.y, data.rot.z, data.rot.w);
-        users[userid].alpha = 0;
+        USERS[userid].pos.set(data.pos.x, data.pos.y, data.pos.z);
+        USERS[userid].rot.set(data.rot.x, data.rot.y, data.rot.z, data.rot.w);
+        USERS[userid].alpha = 0;
     }
 });
 
-socket.on('otherDisconnect', (userid) => {
-    if (users[userid] !== undefined) {
-        console.log(users[userid].name, "has disconnected");
-        scene.remove(users[userid].text);
-        scene.remove(users[userid].mesh);
-        users[userid] = undefined;
+SOCKET.on('otherDisconnect', (userid) => {
+    if (USERS[userid] !== undefined) {
+        console.log(USERS[userid].name, "has disconnected");
+        SCENE.remove(USERS[userid].text);
+        SCENE.remove(USERS[userid].mesh);
+        USERS[userid] = undefined;
     }
 });
 
 // Send information about self to others
 function emitMove() {
-    socket.emit('move', {
-        id: id,
-        pos: player.position,
-        rot: {x:player.quaternion.x, y:player.quaternion.y, z:player.quaternion.z, w:player.quaternion.w}
+    SOCKET.emit('move', {
+        id: ID,
+        pos: PLAYER.position,
+        rot: {x:PLAYER.quaternion.x, y:PLAYER.quaternion.y, z:PLAYER.quaternion.z, w:PLAYER.quaternion.w}
     });
 }
 
 function emitIdentity(target) {
-    socket.emit('identity', {
-        id: id,
+    SOCKET.emit('identity', {
+        id: ID,
         name: name,
         animal: animal,
         target: target
@@ -164,10 +161,10 @@ function init() {
     initManager()
 
     // Initialise everything in the scene
-    scene = initScene("./mesh/weddingquake.min.glb");
-    initSkybox(scene);
-    initLights(scene);
-    initPlayer(scene);
+    initScene("./mesh/weddingquake.min.glb");
+    initSkybox();
+    initLights();
+    initPlayer();
     initRenderer();
     initFonts();
 
@@ -176,42 +173,40 @@ function init() {
 }
 
 function initManager() {
-    manager.onStart = function(url, itemsLoaded, itemsTotal) {
-        //console.log('Started loading: ' + url + '\nLoaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.');
+    MANAGER.onStart = function(managerUrl, itemsLoaded, itemsTotal) {
+        //console.log('Started loading: ' + managerUrl + '\nLoaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.');
     };
 
-    manager.onProgress = function (url, itemsLoaded, itemsTotal) {
+    MANAGER.onProgress = function(managerUrl, itemsLoaded, itemsTotal) {
         document.getElementById('progress-bar').style.width = (itemsLoaded / itemsTotal * 100) + '%';
-        //console.log('Loading file: ' + url + '.\nLoaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.');
+        //console.log('Loading file: ' + managerUrl + '.\nLoaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.');
     };
 
-    manager.onLoad = function () {
+    MANAGER.onLoad = function () {
         console.log('Loading complete!');
         document.getElementById('progress').hidden = true;
-        finishedLoading = true;
     };
 }
 
 function initScene(sceneFile) {
     // Create a new scene
-    let scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
-    //scene.overrideMaterial = new THREE.MeshLambertMaterial();  <--- Funny gamer mode
+    SCENE.background = new THREE.Color(0x000000);
+    //SCENE.overrideMaterial = new THREE.MeshLambertMaterial();  <--- Funny gamer mode
 
     // Use dracoloader for decompression
-    dracoLoader.setDecoderPath('./js/loaders/draco/');
-    dracoLoader.setDecoderConfig({ type: 'js' });
+    DRACO_LOADER.setDecoderPath('./js/loaders/draco/');
+    DRACO_LOADER.setDecoderConfig({ type: 'js' });
 
     // Load the scene geometry
-    gltfLoader.setDRACOLoader(dracoLoader);
-    gltfLoader.load(
+    GLTF_LOADER.setDRACOLoader(DRACO_LOADER);
+    GLTF_LOADER.load(
         sceneFile,
         (gltf) => {
             // Add the level to the scene
             let root = gltf.scene;
             processMaterials(root);
-            scene.add(root);
-            scene.matrixAutoUpdate = false;
+            SCENE.add(root);
+            SCENE.matrixAutoUpdate = false;
         },
         (xhr) => {
             //document.getElementById('progress-bar').style.width = (xhr.loaded / xhr.total * 100) + '%';
@@ -221,78 +216,62 @@ function initScene(sceneFile) {
             console.log(error);
         }
     );
-
-    // Return the scene
-    return scene;
 }
 
-function initSkybox(scene) {
+function initSkybox() {
     // Load skybox
     let skyboxArray = ["_ft.", "_bk.", "_up.", "_dn.", "_rt.", "_lf."];
     for (let i in skyboxArray) {
         skyboxArray[i] = "./img/skybox/cloudtop" + skyboxArray[i] + "jpg";
     }
-    cubeTextureLoader.load(skyboxArray, (texture) => {scene.background = texture});
+    CUBE_TEXTURE_LOADER.load(skyboxArray, (texture) => {SCENE.background = texture});
 }
 
-function initLights(scene) {
+function initLights() {
     // A single huge hemisphere light for global shading
     let light = new THREE.HemisphereLight(0xffffff, 0x222222, 1);
     light.position.set(100, 100, 0);
-
-    scene.add(light);
+    SCENE.add(light);
 }
 
-function initPlayer(scene) {
-    camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.02, 40);
-    controls = new PointerLockControls(camera, document.body);
+function initPlayer() {
+    PLAYER.position.fromArray([0, 0, 0]);
+    PLAYER.speedMultiplier = 1
+    SCENE.add(PLAYER);
 
-    player = controls.getObject();
-    player.position.fromArray([0, 0, 0]);
-    player.speedMultiplier = 1
-
-    scene.add(player);
-
-    canvasHolder.addEventListener('click', function () {
-        if (finishedLoading === true) {
-            controls.lock();
-        }
+    CANVAS_HOLDER.addEventListener('click', function () {
+        CONTROLS.lock();
     }, false);
 
     document.addEventListener('keydown', function (event) {
         switch (event.code) {
             case "ArrowUp":
             case "KeyW":
-                moveForward = true;
+                PLAYER_MOVE[DIR.FORWARD] = true;
                 break;
             case "ArrowLeft":
             case "KeyA":
-                moveLeft = true;
+                PLAYER_MOVE[DIR.LEFT] = true;
                 break;
             case "ArrowDown":
             case "KeyS":
-                moveBackward = true;
+                PLAYER_MOVE[DIR.BACKWARD] = true;
                 break;
             case "ArrowRight":
             case "KeyD":
-                moveRight = true;
+                PLAYER_MOVE[DIR.RIGHT] = true;
                 break;
             case "KeyE":
             case "PageUp":
-                moveUp = true;
+            case "Space":
+                PLAYER_MOVE[DIR.UP] = true;
                 break;
             case "KeyQ":
             case "PageDown":
-                moveDown = true;
-                break;
-            case "Space":
-                moveSpace = true;
-                break;
-            case "ControlLeft":
-                moveCtrl = true;
+                PLAYER_MOVE[DIR.DOWN] = true;
                 break;
             case "ShiftLeft":
-                moveSprint = true;
+                PLAYER_MOVE[DIR.SPRINT] = true;
                 break;
         }
     }, false);
@@ -301,63 +280,56 @@ function initPlayer(scene) {
         switch (event.code) {
             case "ArrowUp":
             case "KeyW":
-                moveForward = false;
+                PLAYER_MOVE[DIR.FORWARD] = false;
                 break;
             case "ArrowLeft":
             case "KeyA":
-                moveLeft = false;
+                PLAYER_MOVE[DIR.LEFT] = false;
                 break;
             case "ArrowDown":
             case "KeyS":
-                moveBackward = false;
+                PLAYER_MOVE[DIR.BACKWARD] = false;
                 break;
             case "ArrowRight":
             case "KeyD":
-                moveRight = false;
+                PLAYER_MOVE[DIR.RIGHT] = false;
                 break;
             case "KeyE":
             case "PageUp":
-                moveUp = false;
+            case "Space":
+                PLAYER_MOVE[DIR.UP] = false;
                 break;
             case "KeyQ":
             case "PageDown":
-                moveDown = false;
-                break;
-            case "Space":
-                moveSpace = false;
-                break;
-            case "ControlLeft":
-                moveCtrl = false;
+                PLAYER_MOVE[DIR.DOWN] = false;
                 break;
             case "ShiftLeft":
-                moveSprint = false;
+                PLAYER_MOVE[DIR.SPRINT] = false;
                 break;
         }
     }, false);
 }
 
 function initRenderer() {
-    renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:"high-performance", stencil:false, alpha:false, depth:true, precision:"lowp"});
-    renderer.setPixelRatio(1);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.outputEncoding = THREE.GammaEncoding;
-    renderer.gammaFactor = 2.2;
-    renderer.gammaOutput = true;
-    //renderer.shadowMap.type = THREE.BasicShadowMap;
-    canvasHolder.appendChild(renderer.domElement);
+    RENDERER.setPixelRatio(1);
+    RENDERER.setSize(window.innerWidth, window.innerHeight);
+    RENDERER.outputEncoding = THREE.GammaEncoding;
+    RENDERER.gammaFactor = 2.2;
+    RENDERER.gammaOutput = true;
+    CANVAS_HOLDER.appendChild(RENDERER.domElement);
 }
 
 function initFonts() {
-    fontLoader.load('./font/OpenSans_Regular.json',
+    FONT_LOADER.load('./font/OpenSans_Regular.json',
         (font) => {
             openSansFont = font;
 
             // If there are any users already in the server before the font loaded, generate text for them
-            for (let userid in users) {
-                if (users[userid].text === undefined) {
-                    let textMesh = createTextMesh(users[userid].name, 0.12);
-                    users[userid].text = textMesh;
-                    scene.add(textMesh);
+            for (let userid in USERS) {
+                if (USERS[userid].text === undefined) {
+                    let textMesh = createTextMesh(USERS[userid].name, 0.12);
+                    USERS[userid].text = textMesh;
+                    SCENE.add(textMesh);
                 }
             }
         }
@@ -372,7 +344,7 @@ function gameLoop() {
         requestAnimationFrame(gameLoop);
         // honestly FUCK whatever the fuck is happening
         // when I try to cap this
-    }, 1000/frameRate);
+    }, 1000/FRAMERATE);
      */
     requestAnimationFrame(gameLoop);
 
@@ -380,6 +352,7 @@ function gameLoop() {
     if (useDeltaTiming) {
         delta = (time - prevTime) / 1000;
         // some code that checks if timing is weird and then turns off delta-timing
+        // this is specifically for those people running this in firefox with privacy.resistFingerprinting enabled
         if (delta === 0.1) {
             weirdTiming += 1;
             if (weirdTiming === 5) {
@@ -388,96 +361,88 @@ function gameLoop() {
             }
         }
     } else {
-        delta = 1/frameRate;
+        delta = 1/FRAMERATE;
     }
 
     // Process player input
-    if (controls.isLocked) {
+    if (CONTROLS.isLocked) {
         // Sprinting
-        if (moveSprint) {
-            moveSpd = moveSpdSprint * player.speedMultiplier;
+        let moveSpd;
+        if (PLAYER_MOVE[DIR.SPRINT]) {
+            moveSpd = SPEED_SPRINT * PLAYER.speedMultiplier;
         } else {
-            moveSpd = moveSpdNormal * player.speedMultiplier;
+            moveSpd = SPEED_NORMAL * PLAYER.speedMultiplier;
         }
 
         // Move forwards/backwards
-        cameraMove = 1*moveForward - 1*moveBackward;
-        if (cameraMove !== 0) {
-            player.translateZ(delta * cameraMove * moveSpd * -1);
+        let dolly = PLAYER_MOVE[DIR.BACKWARD] - PLAYER_MOVE[DIR.FORWARD];
+        if (dolly !== 0) {
+            PLAYER.translateZ(dolly * moveSpd * delta);
         }
 
         // Move left/right
-        cameraStrafe = 1*moveRight - 1*moveLeft;
-        if (cameraStrafe !== 0) {
-            player.translateX(delta * cameraStrafe * moveSpd);
+        let strafe = PLAYER_MOVE[DIR.RIGHT] - PLAYER_MOVE[DIR.LEFT];
+        if (strafe !== 0) {
+            PLAYER.translateX(strafe * moveSpd * delta);
         }
 
         // Move up/down
-        if (moveSpace) {
-            if (moveCtrl) {
-                moveUp = false;
-                moveDown = true;
-            } else {
-                moveUp = true;
-                moveDown = false;
-            }
-        }
-        cameraHeave = 1*moveUp - 1*moveDown;
-        if (cameraHeave !== 0) {
-            player.position.y += (delta * cameraHeave * moveSpd);
+        let heave = PLAYER_MOVE[DIR.UP] - PLAYER_MOVE[DIR.DOWN];
+        if (heave !== 0) {
+            PLAYER.position.y += (heave * moveSpd * delta);
         }
     }
 
     // Broadcast movement to other players n times per second
     moveTimer += delta;
-    if (moveTimer >= 1/tickRate) {
+    if (moveTimer >= 1/TICKRATE) {
         moveTimer = 0;
         emitMove();
     }
 
     // Move other players (interpolate movement)
-    for (let userid in users) {
-        if (users[userid] !== undefined) {
-            let oldPos = users[userid].oldPos;
-            let pos = users[userid].pos;
-            let rot = users[userid].rot;
-            let a = users[userid].alpha;
+    for (let userid in USERS) {
+        if (USERS[userid] !== undefined) {
+            let oldPos = USERS[userid].oldPos;
+            let pos = USERS[userid].pos;
+            let rot = USERS[userid].rot;
+            let a = USERS[userid].alpha;
 
-            if (users[userid].mesh !== undefined) {
-                users[userid].mesh.position.lerpVectors(oldPos, pos, a);
-                users[userid].mesh.quaternion.rotateTowards(rot, users[userid].mesh.quaternion.angleTo(rot) * (tickRate/60));
-                if (users[userid].text !== undefined) {
-                    users[userid].text.position.copy(users[userid].mesh.position);
-                    users[userid].text.rotation.copy(users[userid].mesh.rotation);
+            if (USERS[userid].mesh !== undefined) {
+                USERS[userid].mesh.position.lerpVectors(oldPos, pos, a);
+                USERS[userid].mesh.quaternion.rotateTowards(rot, USERS[userid].mesh.quaternion.angleTo(rot) * (TICKRATE * delta));
+                if (USERS[userid].text !== undefined) {
+                    USERS[userid].text.position.copy(USERS[userid].mesh.position);
+                    USERS[userid].text.rotation.copy(USERS[userid].mesh.rotation);
                 }
             }
 
-            users[userid].alpha = Math.min(a + delta*(tickRate-1), 2);
+            USERS[userid].alpha = Math.min(a + delta*(TICKRATE-1), 2);
         }
     }
 
     prevTime = time;
-    renderer.render(scene, camera);
+    RENDERER.render(SCENE, CAMERA);
 }
 
 
 // Loading functions
 function loadPlayerModel(animal) {
     // Load a specific player model into the scene
-    gltfLoader.load(
+    GLTF_LOADER.load(
         './mesh/playermodels/' + animal + '.min.glb',
         (gltf) => {
             // Once model has been downloaded, scale it appropriately and load it into memory
             let model = gltf.scene;
             processMaterials(model);
-            playerModels[animal] = model;
+            PLAYER_MODELS[animal] = model;
 
             // Also create an instance of the model for all players with that model
-            for (let userid in users) {
-                if (users[userid] !== undefined) {
-                    if (users[userid].animal === animal) {
-                        users[userid].mesh = playerModels[animal].clone();
-                        scene.add(users[userid].mesh);
+            for (let userid in USERS) {
+                if (USERS[userid] !== undefined) {
+                    if (USERS[userid].animal === animal) {
+                        USERS[userid].mesh = PLAYER_MODELS[animal].clone();
+                        SCENE.add(USERS[userid].mesh);
                     }
                 }
             }
@@ -487,7 +452,7 @@ function loadPlayerModel(animal) {
 
 function createOtherPlayer(userid, name, animal) {
     // Init userid entry
-    users[userid] = {
+    USERS[userid] = {
         'name': name,
         'animal': animal,
         'pos': new THREE.Vector3(0,0,0),
@@ -496,25 +461,25 @@ function createOtherPlayer(userid, name, animal) {
         'alpha': 0
     }
 
-    // Load the player's 3D model based on their animal
-    if (animal in playerModels && playerModels[animal] !== undefined) {
-        // If it's already loaded, assign it to the player
-        users[userid].mesh = playerModels[animal].clone();
-        scene.add(users[userid].mesh);
-    } else if (!(animal in playerModels)) {
+    // Load 3D model based on the animal
+    if (animal in PLAYER_MODELS && PLAYER_MODELS[animal] !== undefined) {
+        // If it's already loaded, assign it to the user
+        USERS[userid].mesh = PLAYER_MODELS[animal].clone();
+        SCENE.add(USERS[userid].mesh);
+    } else if (!(animal in PLAYER_MODELS)) {
         // If it's not loaded, and not being loaded, then load it into the scene
-        // loadPlayerModel() will automatically handle assigning it to the player when the mesh is loaded
-        playerModels[animal] = undefined;
+        // loadPlayerModel() will automatically assign it to the user when the mesh is loaded
+        PLAYER_MODELS[animal] = undefined;
         loadPlayerModel(animal);
     }
 
-    // Add text above the player's head if the font has loaded
-    // If the font hasn't loaded yet, it will automatically add text above all current player's heads when it loads
+    // Add text above the user's head if the font has loaded
+    // If the font hasn't loaded yet, it will automatically add text above all current user's heads when it loads
     if (openSansFont !== undefined) {
-        // Create the text mesh and assign it to the player
+        // Create the text mesh and assign it to the user
         let textMesh = createTextMesh(name, 0.12);
-        users[userid].text = textMesh;
-        scene.add(textMesh);
+        USERS[userid].text = textMesh;
+        SCENE.add(textMesh);
     }
 }
 
@@ -557,7 +522,7 @@ function processMaterials(obj) {
             }
 
             // Enable transparency if the material is tagged as transparent
-            if (transparentMaterials.indexOf(child.material.name) > -1) {
+            if (TRANSPARENT_MATERIALS.indexOf(child.material.name) > -1) {
                 //child.material.transparent = true;
                 child.material.alphaTest = 0.2;
             } else {
@@ -568,14 +533,14 @@ function processMaterials(obj) {
             child.material.transparent = false;
             child.material.color.convertSRGBToLinear();
 
-            // TODO: Materials could be converted into MeshLambertMaterial instead of MeshStandardMaterial for optimisation, would scene.overrideMaterial work?
+            // TODO: Materials could be converted into MeshLambertMaterial instead of MeshStandardMaterial for optimisation, would SCENE.overrideMaterial work?
         }
         processMaterials(child);
     });
 }
 
 function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    CAMERA.aspect = window.innerWidth / window.innerHeight;
+    CAMERA.updateProjectionMatrix();
+    RENDERER.setSize(window.innerWidth, window.innerHeight);
 }
