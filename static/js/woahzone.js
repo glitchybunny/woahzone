@@ -27,7 +27,7 @@ const CANVAS_HOLDER = document.getElementById('canvas-holder');
 
 const CAMERA = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.02, 60);
 const SCENE = new THREE.Scene();
-const RENDERER = new THREE.WebGLRenderer({antialias:true, powerPreference:"high-performance", stencil:false, alpha:false, depth:true, precision:"lowp"});
+const RENDERER = new THREE.WebGLRenderer({antialias:true, powerPreference:"high-performance", stencil:false, alpha:true, depth:true, precision:"lowp"});
 const CONTROLS = new PointerLockControls(CAMERA, document.body);
 const PLAYER = CONTROLS.getObject();
 
@@ -315,7 +315,6 @@ function initRenderer() {
     RENDERER.setSize(window.innerWidth, window.innerHeight);
     RENDERER.outputEncoding = THREE.GammaEncoding;
     RENDERER.gammaFactor = 2.2;
-    RENDERER.gammaOutput = true;
     CANVAS_HOLDER.appendChild(RENDERER.domElement);
 }
 
