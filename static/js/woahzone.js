@@ -311,7 +311,7 @@ function initPlayer() {
 }
 
 function initRenderer() {
-    RENDERER.setPixelRatio(1);
+    RENDERER.setPixelRatio(0.7);
     RENDERER.setSize(window.innerWidth, window.innerHeight);
     RENDERER.outputEncoding = THREE.GammaEncoding;
     RENDERER.gammaFactor = 2.2;

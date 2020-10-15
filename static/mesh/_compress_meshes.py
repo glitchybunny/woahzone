@@ -8,4 +8,4 @@ for filename in os.listdir(directory):
         files.append(filename[:-4])
 
 for i in files:
-    os.system('gltf-pipeline -i ' + i + '.glb -o ' + i + '.min.glb -d --draco.compressionLevel 7 --draco.quantizePositionBits 16 --draco.unifiedQuantization true --draco.quantizeTexcoordBits 14')
+    os.system('gltf-pipeline -i ' + i + '.glb -o ' + i + '.min.glb -d --draco.compressionLevel 8 --draco.quantizePositionBits 15 --draco.unifiedQuantization true --draco.quantizeTexcoordBits 14 --draco.quantizeNormalBits 4')
