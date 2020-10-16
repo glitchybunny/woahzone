@@ -25,13 +25,16 @@ app.use(cors());
 app.use(allowCrossDomain);
 
 // Usernames
-const nameList = ["Alfa", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliett", "Kilo",
-	"Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey",
-	"X-ray", "Yankee", "Zulu"];
-const animalList = ["Pill"];//["Aardvark","Alpacca","Anteater","ArabianGazelle","ArcticFox","ArcticHare","ArcticWolf","Armadillo","BabySeal","Bel","BighornSheep1","BighornSheep2"];
+const nameListAdjective = ["Creepy", "Deadly", "Eerie", "Howling", "Icy", "Invisible", "Jumpy", "Dark", "Savage",
+	"Quiet", "Grim", "Dangerous", "Cursed", "Frightful", "Bitter", "Gloomy", "Menacing", "Crackling", "Magical",
+	"Lurking", "Gravestone", "Wicked", "Phantom", "Scarlet", "Haunted", "Witchy", "Spooky", "Scary", "Weird"];
+const nameListNoun = ["Spider", "Ghost", "Pumpkin", "Skull", "Vampire", "Goblin", "Potion", "Shadow", "Monster", "Fog",
+	"Owl", "Bat", "Hunter", "Stalker", "Cat", "Candy", "Ghoul", "Zombie", "Moon", "Werewolf", "Skeleton", "Web",
+	"Thief", "Eyeball", "Eyes", "Candle", "Mist", "Midnight", "Creature"];
+const animalList = ["Ghost"];//["Aardvark","Alpacca","Anteater","ArabianGazelle","ArcticFox","ArcticHare","ArcticWolf","Armadillo","BabySeal","Bel","BighornSheep1","BighornSheep2"];
 
 function randomName() {
-	return nameList[nameList.length * Math.random() | 0];
+	return nameListAdjective[nameListAdjective.length * Math.random() | 0] + nameListNoun[nameListNoun.length * Math.random() | 0] + Math.floor(Math.random().toFixed(2)*100);
 }
 function randomAnimal() {
 	return animalList[animalList.length * Math.random() | 0];
@@ -73,7 +76,7 @@ io.on('connection', (socket) => {
 			socket.broadcast.emit('otherJoin', clients[socket.id]);
 
 			// Note that client has joined in the console
-			console.log(_id, "joined. Name:", _name, ", Animal:", _animal);
+			console.log(_id, "joined as a " + _animal + " named " + _name);
 		}
 
 		// Tell user their assigned name

@@ -22,6 +22,7 @@ const DRACO_LOADER = new DRACOLoader(MANAGER);
 const GLTF_LOADER = new GLTFLoader(MANAGER);
 const CUBE_TEXTURE_LOADER = new THREE.CubeTextureLoader();
 const FONT_LOADER = new THREE.FontLoader(MANAGER);
+const FONT_SIZE = 0.08;
 
 const CANVAS_HOLDER = document.getElementById('canvas-holder');
 
@@ -85,7 +86,7 @@ SOCKET.on('connect', () => {
 SOCKET.on('selfIdentity', (data) => {
     name = data.name;
     animal = data.animal;
-    console.log("You are an " + animal + " named " + name);
+    console.log("You are a " + animal + " with the name " + name);
 });
 
 /// Handle information from other users
@@ -326,7 +327,7 @@ function initFonts() {
             // If there are any users already in the server before the font loaded, generate text for them
             for (let userid in USERS) {
                 if (USERS[userid].text === undefined) {
-                    let textMesh = createTextMesh(USERS[userid].name, 0.12);
+                    let textMesh = createTextMesh(USERS[userid].name, FONT_SIZE);
                     USERS[userid].text = textMesh;
                     SCENE.add(textMesh);
                 }
@@ -476,7 +477,7 @@ function createOtherPlayer(userid, name, animal) {
     // If the font hasn't loaded yet, it will automatically add text above all current user's heads when it loads
     if (openSansFont !== undefined) {
         // Create the text mesh and assign it to the user
-        let textMesh = createTextMesh(name, 0.12);
+        let textMesh = createTextMesh(name, FONT_SIZE);
         USERS[userid].text = textMesh;
         SCENE.add(textMesh);
     }
@@ -493,7 +494,7 @@ function createTextMesh(message, fontSize) {
 
     // Center align text
     textXOffset = -0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x);
-    textGeometry.translate(textXOffset, 0.4, 0);
+    textGeometry.translate(textXOffset, 0.3, 0);
     textGeometry.rotateY(Math.PI);
 
     // Generate text mesh
