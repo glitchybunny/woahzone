@@ -210,7 +210,7 @@ function initScene(sceneFile) {
             SCENE.matrixAutoUpdate = false;
         },
         (xhr) => {
-            //document.getElementById('progress-bar').style.width = (xhr.loaded / xhr.total * 100) + '%';
+            document.getElementById('progress-bar').style.width = (xhr.loaded / xhr.total * 100) + '%';
         },
         (error) => {
             console.log('Error loading', sceneFile);
@@ -221,17 +221,22 @@ function initScene(sceneFile) {
 
 function initSkybox() {
     // Load skybox
-    let skyboxArray = ["_ft.", "_bk.", "_up.", "_dn.", "_rt.", "_lf."];
+    let skyboxArray = ["ft", "bk", "up", "dn", "rt", "lf"];
     for (let i in skyboxArray) {
-        skyboxArray[i] = "./img/skybox/cloudtop" + skyboxArray[i] + "jpg";
+        skyboxArray[i] = "./img/skybox/hell_" + skyboxArray[i] + ".min.png";
     }
-    CUBE_TEXTURE_LOADER.load(skyboxArray, (texture) => {SCENE.background = texture});
+    CUBE_TEXTURE_LOADER.load(skyboxArray, (texture) => {
+        texture.encoding = THREE.sRGBEncoding;
+        texture.magFilter = THREE.NearestFilter;
+        texture.minFilter = THREE.NearestFilter;
+        SCENE.background = texture;
+    });
 }
 
 function initLights() {
     // A single huge hemisphere light for global shading
-    let light = new THREE.HemisphereLight(0xffffff, 0x222222, 1);
-    light.position.set(100, 100, 0);
+    let light = new THREE.HemisphereLight(0xffffcc, 0x331111, 1);
+    light.position.set(50, 100, 0);
     SCENE.add(light);
 }
 
@@ -357,7 +362,7 @@ function gameLoop() {
             weirdTiming += 1;
             if (weirdTiming === 5) {
                 useDeltaTiming = false;
-                console.warn("HUMAN.Riley: performance.now() warning: The performance API in your browser is returning strange time measurements, perhaps due to a privacy or anti-fingerprinting setting you've enabled. I've disabled delta-timing so this doesn't affect your performance.")
+                console.warn("HUMAN.Riley: performance.now() warning: The performance API in your browser is returning strange time measurements, perhaps due to a privacy or anti-fingerprinting setting you've enabled. This may affect your performance :(")
             }
         }
     } else {
@@ -515,10 +520,11 @@ function processMaterials(obj) {
             // Enable backface culling
             child.material.side = THREE.FrontSide;
 
-            // Don't blur materials up close
+            // Improve the mipmaps
             if (child.material.map != null) {
                 child.material.map.magFilter = THREE.NearestFilter;
                 child.material.map.minFilter = THREE.NearestMipmapNearestFilter;//THREE.LinearMipmapNearestFilter;
+                child.material.map.anisotropy = 1;
             }
 
             // Enable transparency if the material is tagged as transparent
