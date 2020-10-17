@@ -32,7 +32,7 @@ const RENDERER = new THREE.WebGLRenderer({antialias:true, powerPreference:"high-
 const CONTROLS = new PointerLockControls(CAMERA, document.body);
 const PLAYER = CONTROLS.getObject();
 
-const TRANSPARENT_MATERIALS = ['grass_side', 'vines_MAT'];
+const TRANSPARENT_MATERIALS = ['tallgrass', 'vines'];
 const PLAYER_MODELS = {};
 
 const DIR = {FORWARD:0, BACKWARD:1, LEFT:2, RIGHT:3, UP:4, DOWN:5, SPRINT:6};
@@ -523,14 +523,14 @@ function processMaterials(obj) {
             // Improve the mipmaps
             if (child.material.map != null) {
                 child.material.map.magFilter = THREE.NearestFilter;
-                child.material.map.minFilter = THREE.NearestMipmapNearestFilter;//THREE.LinearMipmapNearestFilter;
+                child.material.map.minFilter = THREE.NearestMipmapNearestFilter;//THREE.LinearMipmapNearestFilter;//
                 child.material.map.anisotropy = 1;
             }
 
             // Enable transparency if the material is tagged as transparent
             if (TRANSPARENT_MATERIALS.indexOf(child.material.name) > -1) {
                 //child.material.transparent = true;
-                child.material.alphaTest = 0.2;
+                child.material.alphaTest = 0.5;
             } else {
                 //child.material.transparent = false;
                 child.material.alphaTest = 1;
