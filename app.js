@@ -31,7 +31,7 @@ const nameListAdjective = ["Creepy", "Deadly", "Eerie", "Howling", "Icy", "Invis
 const nameListNoun = ["Spider", "Ghost", "Pumpkin", "Skull", "Vampire", "Goblin", "Potion", "Shadow", "Monster", "Fog",
 	"Owl", "Bat", "Hunter", "Stalker", "Cat", "Candy", "Ghoul", "Zombie", "Moon", "Werewolf", "Skeleton", "Web",
 	"Thief", "Eyeball", "Eyes", "Candle", "Mist", "Midnight", "Creature"];
-const animalList = ["Ghost"];//["Aardvark","Alpacca","Anteater","ArabianGazelle","ArcticFox","ArcticHare","ArcticWolf","Armadillo","BabySeal","Bel","BighornSheep1","BighornSheep2"];
+const animalList = ["ghost", "vampire", "werewolf"];//["Aardvark","Alpacca","Anteater","ArabianGazelle","ArcticFox","ArcticHare","ArcticWolf","Armadillo","BabySeal","Bel","BighornSheep1","BighornSheep2"];
 
 function randomName() {
 	return nameListAdjective[nameListAdjective.length * Math.random() | 0] + nameListNoun[nameListNoun.length * Math.random() | 0] + Math.floor(Math.random().toFixed(2)*100);
