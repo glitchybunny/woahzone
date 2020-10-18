@@ -7,37 +7,20 @@ const http = require('http');
 const xss = require("xss");
 var path = require('path');
 
-// Cors proofing
-const cors = require('cors');
-var allowCrossDomain = function(req, res, next) {
-	res.header('Access-Control-Allow-Origin', '*');
-	res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
-	res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
-
-	// intercept OPTIONS method
-	if ('OPTIONS' == req.method) {
-		res.send(200);
-	} else {
-		next();
-	}
-};
-app.use(cors());
-app.use(allowCrossDomain);
-
 // Usernames
 const nameListAdjective = ["Creepy", "Deadly", "Eerie", "Howling", "Icy", "Invisible", "Jumpy", "Dark", "Savage",
 	"Quiet", "Grim", "Dangerous", "Cursed", "Frightful", "Bitter", "Gloomy", "Menacing", "Crackling", "Magical",
-	"Lurking", "Gravestone", "Wicked", "Phantom", "Scarlet", "Haunted", "Witchy", "Spooky", "Scary", "Weird"];
+	"Lurking", "Gravestone", "Wicked", "Phantom", "Scarlet", "Haunted", "Witchy", "Spooky", "Scary", "Weird", "Nerdy"];
 const nameListNoun = ["Spider", "Ghost", "Pumpkin", "Skull", "Vampire", "Goblin", "Potion", "Shadow", "Monster", "Fog",
 	"Owl", "Bat", "Hunter", "Stalker", "Cat", "Candy", "Ghoul", "Zombie", "Moon", "Werewolf", "Skeleton", "Web",
-	"Thief", "Eyeball", "Eyes", "Candle", "Mist", "Midnight", "Creature"];
-const animalList = ["ghosty", "vampire", "werewolf"];//["Aardvark","Alpacca","Anteater","ArabianGazelle","ArcticFox","ArcticHare","ArcticWolf","Armadillo","BabySeal","Bel","BighornSheep1","BighornSheep2"];
+	"Thief", "Eyeball", "Eyes", "Candle", "Mist", "Midnight", "Creature", "Nerd"];
+const playerModelList = ["ghost", "vampire", "werewolf"];
 
 function randomName() {
 	return nameListAdjective[nameListAdjective.length * Math.random() | 0] + nameListNoun[nameListNoun.length * Math.random() | 0] + Math.floor(Math.random().toFixed(2)*100);
 }
-function randomAnimal() {
-	return animalList[animalList.length * Math.random() | 0];
+function randomPlayerModel() {
+	return playerModelList[playerModelList.length * Math.random() | 0];
 }
 
 // Basic client list (to keep track of currently connected client IDs and names only, nothing more)
@@ -64,26 +47,26 @@ io.on('connection', (socket) => {
 		// Make sure name is XSS safe
 		let _id = data.id || 0;
 		let _name = randomName();
-		let _animal = randomAnimal();
+		let _model = randomPlayerModel();
 
 		if (_id !== 0) {
 			// Add data to current client list
 			clients[socket.id].id = _id;
 			clients[socket.id].name = _name;
-			clients[socket.id].animal = _animal;
+			clients[socket.id].model = _model;
 
 			// Broadcast join to all others (which will then respond with name for original client)
 			socket.broadcast.emit('otherJoin', clients[socket.id]);
 
 			// Note that client has joined in the console
-			console.log(_id, "joined as a " + _animal + " named " + _name);
+			console.log(_id, "joined as a " + _model + " named " + _name);
 		}
 
 		// Tell user their assigned name
 		if (data.id !== 0) {
 			sockets[socket.id].emit('selfIdentity', {
 				name: _name,
-				animal: _animal
+				model: _model
 			})
 		}
 	});
@@ -93,12 +76,12 @@ io.on('connection', (socket) => {
 		// Make sure name is XSS safe
 		let _id = data.id;
 		let _name = data.name;
-		let _animal = data.animal;
+		let _model = data.model;
 		_name = xss(_name.substr(0, 20));
 
 		// Update name in client list
 		clients[socket.id].name = _name;
-		clients[socket.id].animal = _animal;
+		clients[socket.id].model = _model;
 
 		// If there's a target, only send the name to that target
 		if (data.target !== undefined) {
@@ -108,7 +91,7 @@ io.on('connection', (socket) => {
 					sockets[c].emit('otherIdentity', {
 						id: _id,
 						name: _name,
-						animal: _animal
+						model: _model
 					})
 				}
 			}
@@ -117,7 +100,7 @@ io.on('connection', (socket) => {
 			socket.broadcast.emit('otherIdentity', {
 				id: _id,
 				name: _name,
-				animal: _animal
+				model: _model
 			});
 		}
 	});
