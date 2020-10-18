@@ -42,7 +42,7 @@ const SPEED_SPRINT = 14;
 
 /// --- VARIABLES --- ///
 var name = undefined;
-var animal = undefined;
+var model = undefined;
 
 var time, delta, moveTimer = 0;
 var useDeltaTiming = true, weirdTiming = 0;
@@ -79,14 +79,17 @@ SOCKET.on('connect', () => {
 
     // Unblur screen and give control access
     CANVAS_HOLDER.style.filter = "blur(0px)";
-    document.getElementById('block-input').remove();
+    let blockInputElement = document.getElementById('block-input');
+    if (typeof(blockInputElement) !== 'undefined' && blockInputElement !== null) {
+        blockInputElement.remove();
+    }
 });
 
 // Receive assigned identity
 SOCKET.on('selfIdentity', (data) => {
     name = data.name;
-    animal = data.animal;
-    console.log("You are a " + animal + " with the name " + name);
+    model = data.model;
+    console.log("You are a(n) " + model + " with the name " + name);
 });
 
 /// Handle information from other users
@@ -94,7 +97,7 @@ SOCKET.on('otherJoin', (data) => {
     console.log(data.name, "has joined the server");
 
     // Load the player data and create them in the world
-    createOtherPlayer(data.id, data.name, data.animal);
+    createOtherPlayer(data.id, data.name, data.model);
 
     // Send identity back if you have it
     if (name !== "" && name !== undefined) {
@@ -106,12 +109,12 @@ SOCKET.on('otherJoin', (data) => {
 SOCKET.on('otherIdentity', (data) => {
     if (USERS[data.id] !== undefined) {
         USERS[data.id].name = data.name;
-        USERS[data.id].animal = data.animal;
+        USERS[data.id].model = data.model;
     } else {
         console.log(data.name, "is already on the server");
 
         // Haven't met this player before, so create them on our end
-        createOtherPlayer(data.id, data.name, data.animal);
+        createOtherPlayer(data.id, data.name, data.model);
     }
 });
 
@@ -149,7 +152,7 @@ function emitIdentity(target) {
     SOCKET.emit('identity', {
         id: ID,
         name: name,
-        animal: animal,
+        model: model,
         target: target
     });
 }
@@ -432,21 +435,21 @@ function gameLoop() {
 
 
 // Loading functions
-function loadPlayerModel(animal) {
+function loadPlayerModel(model) {
     // Load a specific player model into the scene
     GLTF_LOADER.load(
-        './mesh/playermodels/' + animal + '.min.glb',
+        './mesh/playermodels/' + model + '.min.glb',
         (gltf) => {
             // Once model has been downloaded, scale it appropriately and load it into memory
-            let model = gltf.scene;
-            processMaterials(model);
-            PLAYER_MODELS[animal] = model;
+            let modelScene = gltf.scene;
+            processMaterials(modelScene);
+            PLAYER_MODELS[model] = modelScene;
 
             // Also create an instance of the model for all players with that model
             for (let userid in USERS) {
                 if (USERS[userid] !== undefined) {
-                    if (USERS[userid].animal === animal) {
-                        USERS[userid].mesh = PLAYER_MODELS[animal].clone();
+                    if (USERS[userid].model === model) {
+                        USERS[userid].mesh = PLAYER_MODELS[model].clone();
                         SCENE.add(USERS[userid].mesh);
                     }
                 }
@@ -455,27 +458,27 @@ function loadPlayerModel(animal) {
     );
 }
 
-function createOtherPlayer(userid, name, animal) {
+function createOtherPlayer(userid, name, model) {
     // Init userid entry
     USERS[userid] = {
         'name': name,
-        'animal': animal,
+        'model': model,
         'pos': new THREE.Vector3(0,0,0),
         'rot': new THREE.Quaternion(0, 0, 0, 0),
         'oldPos': new THREE.Vector3(0,0,0),
         'alpha': 0
     }
 
-    // Load 3D model based on the animal
-    if (animal in PLAYER_MODELS && PLAYER_MODELS[animal] !== undefined) {
+    // Load 3D model
+    if (model in PLAYER_MODELS && PLAYER_MODELS[model] !== undefined) {
         // If it's already loaded, assign it to the user
-        USERS[userid].mesh = PLAYER_MODELS[animal].clone();
+        USERS[userid].mesh = PLAYER_MODELS[model].clone();
         SCENE.add(USERS[userid].mesh);
-    } else if (!(animal in PLAYER_MODELS)) {
+    } else if (!(model in PLAYER_MODELS)) {
         // If it's not loaded, and not being loaded, then load it into the scene
         // loadPlayerModel() will automatically assign it to the user when the mesh is loaded
-        PLAYER_MODELS[animal] = undefined;
-        loadPlayerModel(animal);
+        PLAYER_MODELS[model] = undefined;
+        loadPlayerModel(model);
     }
 
     // Add text above the user's head if the font has loaded
