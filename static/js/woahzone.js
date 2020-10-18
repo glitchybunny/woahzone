@@ -121,12 +121,14 @@ SOCKET.on('otherIdentity', (data) => {
 SOCKET.on('otherMove', (data) => {
     let userid = data.id;
     if (userid in USERS) {
-        if (USERS[userid].mesh !== undefined) {
-            USERS[userid].oldPos.copy(USERS[userid].mesh.position);
+        if (USERS[userid] !== undefined) {
+            if (USERS[userid].mesh !== undefined) {
+                USERS[userid].oldPos.copy(USERS[userid].mesh.position);
+            }
+            USERS[userid].pos.set(data.pos.x, data.pos.y, data.pos.z);
+            USERS[userid].rot.set(data.rot.x, data.rot.y, data.rot.z, data.rot.w);
+            USERS[userid].alpha = 0;
         }
-        USERS[userid].pos.set(data.pos.x, data.pos.y, data.pos.z);
-        USERS[userid].rot.set(data.rot.x, data.rot.y, data.rot.z, data.rot.w);
-        USERS[userid].alpha = 0;
     }
 });
 
@@ -347,13 +349,6 @@ function initFonts() {
 
 // ThreeJS main game/render loop
 function gameLoop() {
-    /*
-    setTimeout(function () {
-        requestAnimationFrame(gameLoop);
-        // honestly FUCK whatever the fuck is happening
-        // when I try to cap this
-    }, 1000/FRAMERATE);
-     */
     requestAnimationFrame(gameLoop);
 
     time = performance.now();
@@ -515,7 +510,7 @@ function createTextMesh(message, fontSize) {
 function processMaterials(obj) {
     // Recursively goes through all materials and modifies them so the scene is displayed correctly
     //  - Enables backface culling on all materials
-    //  - Enables transparency for some materials
+    //  - Enables alpha testing for some materials
 
     obj.children.forEach((child) => {
         if (child.hasOwnProperty("material")) {
@@ -530,12 +525,10 @@ function processMaterials(obj) {
                 child.material.map.anisotropy = 1;
             }
 
-            // Enable transparency if the material is tagged as transparent
+            // Enable alpha testing if the material is tagged as transparent
             if (TRANSPARENT_MATERIALS.indexOf(child.material.name) > -1) {
-                //child.material.transparent = true;
                 child.material.alphaTest = 0.5;
             } else {
-                //child.material.transparent = false;
                 child.material.alphaTest = 1;
             }
 
