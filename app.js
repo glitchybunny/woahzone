@@ -44,7 +44,6 @@ io.on('connection', (socket) => {
 
 	// Listen for client joining and assign a name
 	socket.on('join', (data) => {
-		// Make sure name is XSS safe
 		let _id = data.id || 0;
 		let _name = randomName();
 		let _model = randomPlayerModel();
@@ -73,11 +72,10 @@ io.on('connection', (socket) => {
 
 	// Listen for name change events
 	socket.on('identity', (data) => {
-		// Make sure name is XSS safe
 		let _id = data.id;
 		let _name = data.name;
 		let _model = data.model;
-		_name = xss(_name.substr(0, 20));
+		_name = xss(_name.substr(0, 20));  // Make sure name is XSS safe
 
 		// Update name in client list
 		clients[socket.id].name = _name;
