@@ -73,6 +73,7 @@ if (WEBGL.isWebGLAvailable()) {
 // Establish connection
 SOCKET.on('connect', () => {
     console.log("Connection established to server");
+    console.log("DANE: ID is " + ID);
 
     // Broadcast join to other users
     SOCKET.emit('join', {id: ID});
@@ -139,6 +140,12 @@ SOCKET.on('otherDisconnect', (userid) => {
         SCENE.remove(USERS[userid].mesh);
         USERS[userid] = undefined;
     }
+});
+
+// If client is disconnected unexpectedly (i.e. booted from server or server connection lost)
+SOCKET.on('disconnect', (data) => {
+    CANVAS_HOLDER.parentNode.removeChild(CANVAS_HOLDER);
+     alert('Kicked from the server.');
 });
 
 // Send information about self to others
