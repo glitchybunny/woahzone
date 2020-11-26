@@ -34,7 +34,7 @@ io.on('connection', (socket) => {
 	sockets[socket.id] = socket;
 
 	// Listen for disconnect events
-	socket.on('disconnecting', (data) => {
+	socket.on('disconnect', (data) => {
 		// Only broadcast to other clients that this one has left IF it has triggered a join event
 		if (clients[socket.id].id !== undefined) {
 			socket.broadcast.emit('otherDisconnect', clients[socket.id].id);
@@ -47,6 +47,16 @@ io.on('connection', (socket) => {
 		let _id = data.id || 0;
 		let _name = randomName();
 		let _model = randomPlayerModel();
+
+		// Check to see if a client with the same ID has already joined the server
+		let clientsKeys = Object.keys(clients)
+		clientsKeys.forEach((key, index) => {
+			// If the ID matches, then drop the existing socket connection
+			if (`${clients[key].id}` == _id) {
+				let clientToDisconnect = `${[key]}`;
+				sockets[clientToDisconnect].disconnect(); // boot the existing client off the server
+			}
+		})
 
 		if (_id !== 0) {
 			// Add data to current client list
