@@ -6,9 +6,9 @@ Created because I wanted a space to hang out with friends digitally when we coul
 :ghost: *Currently halloween themed* :ghost:
 
 ## Instructions
-It's designed to be as simple as possible to install and host without having to read much documentation at all. You should be able to run this on a heroku instance without much trouble.
+It's designed to be as simple as possible to install and host without having to read too much documentation. You should be able to run this on a heroku instance without much trouble, and I imagine it'll work self-hosted and on other platforms too.
 
-For reference, app.js is the node server, and /static/js/client.js is the javascript loaded by the client when they connect.
+For reference, app.js is the node server, and /static/js/woahzone.js is the main javascript module loaded by the client when they connect.
 
 **How to run locally:**
 1. Make sure you have npm and nodejs installed - they're required for this.
@@ -23,3 +23,10 @@ For reference, app.js is the node server, and /static/js/client.js is the javasc
 3. Add a new entry to the Config Vars in the settings. Set KEY to `NODE_ENV` and VALUE to `production node index.js`.
 4. Under resources, you'll want to create a new web dyno. A free/hobby dyno should run this fine.
 5. Run the dyno with the instructions `npm start`.
+
+## Demonstration
+The latest version of woahzone can be played at [multiplayer.rtay.io](http://multiplayer.rtay.io/). 
+
+If nobody else is online, try inviting some friends* or opening a couple of windows with the website to simulate the experience. 
+
+*\*Friends not included*
