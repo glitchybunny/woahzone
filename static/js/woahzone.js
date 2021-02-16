@@ -196,6 +196,11 @@ function initManager() {
     };
 
     MANAGER.onLoad = function () {
+        // Only allow control once content is fully loaded
+        CANVAS_HOLDER.addEventListener('click', function () {
+            CONTROLS.lock();
+        }, false);
+
         console.log('Loading complete!');
         document.getElementById('progress').hidden = true;
     };
@@ -256,10 +261,6 @@ function initPlayer() {
     PLAYER.position.fromArray([0, 0, 0]);
     PLAYER.speedMultiplier = 1
     SCENE.add(PLAYER);
-
-    CANVAS_HOLDER.addEventListener('click', function () {
-        CONTROLS.lock();
-    }, false);
 
     document.addEventListener('keydown', function (event) {
         switch (event.code) {
