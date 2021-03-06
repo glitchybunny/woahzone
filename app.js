@@ -69,10 +69,8 @@ io.on('connection', (socket) => {
 
 			// Note that client has joined in the console
 			console.log(_id, "joined as a " + _model + " named " + _name);
-		}
 
-		// Tell user their assigned name
-		if (data.id !== 0) {
+			// Tell user their assigned name
 			sockets[socket.id].emit('selfIdentity', {
 				name: _name,
 				model: _model
