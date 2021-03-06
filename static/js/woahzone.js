@@ -144,8 +144,22 @@ SOCKET.on('otherDisconnect', (userid) => {
 
 // If client is disconnected unexpectedly (i.e. booted from server or server connection lost)
 SOCKET.on('disconnect', (data) => {
+    // Determine which disconnect has occurred and display relevant error
+    switch(data) {
+        case("io server disconnect"):
+            alert("Kicked from server!");
+            break;
+        case("ping timeout"):
+            alert("Timed out from server.");
+            break;
+        case("transport close"):
+            alert("Lost connection to server.");
+            break;
+        default:
+            alert("Disconnected due to an unknown error.\nPlease reconnect.");
+    }
+    // Delete the canvas module to prevent user from still moving around after disconnect
     CANVAS_HOLDER.parentNode.removeChild(CANVAS_HOLDER);
-     alert('Kicked from the server.');
 });
 
 // Send information about self to others
