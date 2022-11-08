@@ -17,15 +17,8 @@ For reference, app.js is the node server, and /static/js/woahzone.js is the main
 4. Run `node app.js` to test the server locally.
 5. Connect to the server by going to `localhost` or `127.0.0.1` in your browser.
 
-**How to run on heroku:**
-1. Create new heroku instance and connect it to the repo.
-2. Under settings, add the `heroku/nodejs` buildpack.
-3. Add a new entry to the Config Vars in the settings. Set KEY to `NODE_ENV` and VALUE to `production node index.js`.
-4. Under resources, you'll want to create a new web dyno. A free/hobby dyno should run this fine.
-5. Run the dyno with the instructions `npm start`.
-
 ## Demonstration
-The latest version of woahzone can be played at [multiplayer.rtay.io](http://multiplayer.rtay.io/). 
+The latest version of woahzone can be played at [woahzone.glitch.gay](https://woahzone.glitch.gay/). 
 
 If nobody else is online, try inviting some friends* or opening a couple of windows with the website to simulate the experience. 
 
